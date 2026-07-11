@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="flashtrace logo">
+  <defs>
+    <linearGradient id="bolt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f9c21d"/>
+      <stop offset="1" stop-color="#d97d0e"/>
+    </linearGradient>
+  </defs>
+  <path d="M18.5 2 6 18h7l-2.5 12L23 13.5h-7L18.5 2z" fill="url(#bolt)"/>
+</svg>
