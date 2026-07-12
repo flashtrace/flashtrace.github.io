@@ -9,6 +9,7 @@ import { Marked } from 'marked';
 
 import { docShell, esc, GITHUB_URL, highlightTokens, SITE_URL } from './src/layout.mjs';
 import { renderLanding } from './src/landing.mjs';
+import { renderImpressum } from './src/impressum.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.join(root, 'dist');
@@ -170,13 +171,16 @@ mkdirSync(dist, { recursive: true });
 
 writeFileSync(path.join(dist, 'index.html'), renderLanding({ version, gitRef }));
 
+mkdirSync(path.join(dist, 'impressum'), { recursive: true });
+writeFileSync(path.join(dist, 'impressum', 'index.html'), renderImpressum({ version }));
+
 for (const page of pages) {
   const dir = page.slug ? path.join(dist, 'docs', page.slug) : path.join(dist, 'docs');
   mkdirSync(dir, { recursive: true });
   writeFileSync(path.join(dir, 'index.html'), renderDoc(page));
 }
 
-const sitePaths = ['/', ...pages.map((p) => (p.slug ? `/docs/${p.slug}/` : '/docs/'))];
+const sitePaths = ['/', ...pages.map((p) => (p.slug ? `/docs/${p.slug}/` : '/docs/')), '/impressum/'];
 writeFileSync(
   path.join(dist, 'sitemap.xml'),
   `<?xml version="1.0" encoding="UTF-8"?>
@@ -190,4 +194,4 @@ cpSync(path.join(root, 'public'), dist, { recursive: true });
 cpSync(path.join(root, 'src', 'styles', 'site.css'), path.join(dist, 'site.css'));
 cpSync(path.join(root, 'src', 'scripts', 'site.js'), path.join(dist, 'site.js'));
 
-console.log(`built ${pages.length + 1} pages into dist/ (flashtrace ${version || 'unknown version'})`);
+console.log(`built ${pages.length + 2} pages into dist/ (flashtrace ${version || 'unknown version'})`);

@@ -76,6 +76,7 @@ function footer({ version }) {
       <a href="${GITHUB_URL}">GitHub</a>
       <a href="${DISCUSSIONS_URL}">Discussions</a>
       <a href="${GITHUB_URL}/blob/main/LICENSE">License</a>
+      <a href="/impressum/">Legal Notice</a>
     </nav>
     <p class="footer-note">Docs built from flashtrace ${esc(version)}.</p>
   </div>
