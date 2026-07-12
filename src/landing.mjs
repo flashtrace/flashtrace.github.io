@@ -247,6 +247,7 @@ ${installSection(version)}
     title: 'flashtrace - lightning-fast, reference-based requirement tracing',
     description:
       'flashtrace traces requirement coverage between Markdown specs and code comments. Zero runtime dependencies, runs anywhere Node.js ≥ 18 does.',
+    path: '/',
     version,
     active: 'home',
     body,

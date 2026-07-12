@@ -151,6 +151,7 @@ function renderDoc(page) {
   return docShell({
     title: `${page.title} · flashtrace`,
     description: `flashtrace documentation - ${page.title}.`,
+    path: page.slug ? `/docs/${page.slug}/` : '/docs/',
     version,
     navGroups,
     toc: state.toc,

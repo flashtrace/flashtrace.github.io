@@ -1,5 +1,6 @@
 // Shared page shells: plain template-literal functions, no template engine.
 
+export const SITE_URL = 'https://flashtrace.github.io';
 export const GITHUB_URL = 'https://github.com/flashtrace/flashtrace';
 export const DISCUSSIONS_URL = 'https://github.com/flashtrace/flashtrace/discussions';
 
@@ -82,7 +83,7 @@ function footer({ version }) {
 }
 
 // Full HTML document. `body` is everything between top bar and footer.
-export function pageShell({ title, description, version, active, body, bodyClass = '', withSidebar = false }) {
+export function pageShell({ title, description, path, version, active, body, bodyClass = '', withSidebar = false }) {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -90,6 +91,7 @@ export function pageShell({ title, description, version, active, body, bodyClass
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
+<link rel="canonical" href="${SITE_URL}${esc(path)}">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/site.css">
 <script>${themeInit}</script>
@@ -144,7 +146,7 @@ function tocRail(toc) {
 }
 
 // Docs shell: top bar, left sidebar, centered article, right TOC rail.
-export function docShell({ title, description, version, navGroups, toc, content }) {
+export function docShell({ title, description, path, version, navGroups, toc, content }) {
   const body = `<div class="doc-layout">
 ${sidebar(navGroups)}
 <main class="doc-main" id="main">
@@ -157,6 +159,7 @@ ${tocRail(toc)}
   return pageShell({
     title,
     description,
+    path,
     version,
     active: 'docs',
     body,
