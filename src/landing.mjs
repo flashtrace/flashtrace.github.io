@@ -28,7 +28,7 @@ function windowDots() {
 }
 
 function ideMock() {
-  return `<div class="ide-mock" role="img" aria-label="Two editor panes — a Markdown spec defining req:auth/login#1 and a TypeScript file tagged [impl:auth/login#1] — connected by a trace; a terminal below shows a clean flashtrace run ending in ok.">
+  return `<div class="ide-mock" role="img" aria-label="Two editor panes - a Markdown spec defining req:auth/login#1 and a TypeScript file tagged [impl:auth/login#1] - connected by a trace; a terminal below shows a clean flashtrace run ending in ok.">
   <div class="ide-chrome">
     ${windowDots()}
     <span class="ide-title">requirement tracing</span>
@@ -69,7 +69,7 @@ Needs: impl:auth/login#1`,
   },
   {
     title: 'Tag your code',
-    text: 'Drop the ID into a comment — flashtrace understands the comment syntax of dozens of languages, from TypeScript to SQL to Vue.',
+    text: 'Drop the ID into a comment - flashtrace understands the comment syntax of dozens of languages, from C-Like (incl. JS/TS) to SQL to Powershell.',
     snippet: `// [impl:auth/login#1]
 // [>>utest:auth/login#1]
 export function login(token) {
@@ -79,7 +79,7 @@ export function login(token) {
   },
   {
     title: 'Run flashtrace',
-    text: 'One command traces every requirement to its coverage — transitively — and reports what is missing, orphaned, unwanted, outdated or duplicated.',
+    text: 'One command traces every requirement to its coverage - transitively - and reports what is missing, orphaned, unwanted, outdated or duplicated.',
     // captured from a real run over the two files above plus the demanded test
     snippet: `$ npx flashtrace
 
@@ -117,18 +117,18 @@ function howItWorks() {
 </section>`;
 }
 
-// Token coloring for landing snippets — same rules as the docs build.
+// Token coloring for landing snippets - same rules as the docs build.
 const highlightSnippet = (text) => highlightTokens(esc(text));
 
 // --- features -----------------------------------------------------------------
 
 const features = [
-  ['Zero runtime dependencies', 'One self-contained script. Vendor it or install it — nothing else comes along.', null],
+  ['Zero runtime dependencies', 'One self-contained script. Vendor it or install it - nothing else comes along.', null],
   ['Runs anywhere', 'Everything Node.js ≥ 18 runs on: your laptop, your CI, your air-gapped build box.', null],
-  ['Many languages', 'Tags live in ordinary comments — C-family, Python, Ruby, shell, SQL, Lua, HTML, Vue and more.', '/docs/code-tags/'],
+  ['Many languages', 'Tags live in ordinary comments - C-family, Python, Ruby, shell, SQL, Lua, HTML, Vue and more.', '/docs/code-tags/'],
   ['Deep, transitive coverage', 'An item is only deep-covered when its whole tracing chain is. Broken links show up wherever they hide.', '/docs/coverage-rules/'],
   ['Wildcards &amp; forwarding', 'Accept any 2.x revision, or delegate a requirement’s obligation to another item with a forwarding tag.', '/docs/forwarding/'],
-  ['Git-aware scanning', 'Files ignored by git are excluded automatically — no config to keep in sync.', '/docs/usage/'],
+  ['Git-aware scanning', 'Files ignored by git are excluded automatically - no config to keep in sync.', '/docs/usage/'],
   ['CI-friendly', 'Plain-text report, meaningful exit codes: 0 clean, 1 defects found, 2 usage error.', '/docs/command-line/'],
 ];
 
@@ -231,7 +231,7 @@ export function renderLanding({ version }) {
 <section class="hero">
   <div class="hero-copy">
     <h1>Lightning-fast, reference-based requirement tracing</h1>
-    <p class="hero-sub">flashtrace verifies that every requirement in your Markdown specs is covered by the code and tests it demands — with zero runtime dependencies, anywhere Node.js runs.</p>
+    <p class="hero-sub">flashtrace verifies that every requirement in your Markdown specs is covered by the code and tests it demands - with zero runtime dependencies, anywhere Node.js runs.</p>
     <div class="hero-ctas">
       <a class="btn btn-primary" href="/docs/">Get started</a>
       <a class="btn btn-secondary" href="${GITHUB_URL}">View on GitHub</a>
@@ -245,7 +245,7 @@ ${examplesSection()}
 ${installSection(version)}
 </main>`;
   return pageShell({
-    title: 'flashtrace — lightning-fast, reference-based requirement tracing',
+    title: 'flashtrace - lightning-fast, reference-based requirement tracing',
     description:
       'flashtrace traces requirement coverage between Markdown specs and code comments. Zero runtime dependencies, runs anywhere Node.js ≥ 18 does.',
     version,

@@ -1,5 +1,5 @@
 // Curated interactive examples: real inputs and terminal output captured from
-// actual `flashtrace` runs (v0.7.0). No in-browser execution — the CLI needs
+// actual `flashtrace` runs (v0.7.0). No in-browser execution - the CLI needs
 // node:fs and git, so v1 ships pre-computed, trustworthy captures.
 import { esc } from './layout.mjs';
 
@@ -88,7 +88,7 @@ ok`,
     id: 'uncovered',
     title: 'An uncovered defect',
     blurb:
-      'The spec needs test:auth/login#2, but only revision 1 exists — flashtrace flags the revision mismatch, and the outdated test as unwanted.',
+      'The spec needs test:auth/login#2, but only revision 1 exists - flashtrace flags the revision mismatch, and the outdated test as unwanted.',
     command: 'flashtrace',
     files: [
       {

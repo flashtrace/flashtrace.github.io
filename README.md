@@ -1,6 +1,6 @@
 # flashtrace.github.io
 
-The website of [flashtrace](https://github.com/flashtrace/flashtrace) — a landing page plus
+The website of [flashtrace](https://github.com/flashtrace/flashtrace) - a landing page plus
 documentation rendered from the tool repository's `docs/`, served by GitHub Pages at
 [flashtrace.github.io](https://flashtrace.github.io/).
 
@@ -18,7 +18,7 @@ build-time dependency ([marked](https://github.com/markedjs/marked)).
 - `.github/workflows/deploy.yml` builds and deploys on every push to `main`, on manual
   `workflow_dispatch`, and on a `repository_dispatch` of type `flashtrace-release` that the
   tool repository fires after each release. Docs are always checked out at the release tag
-  (from the dispatch payload, or the latest release otherwise) — the site documents released
+  (from the dispatch payload, or the latest release otherwise) - the site documents released
   behavior, not `main`.
 
 ## Local development

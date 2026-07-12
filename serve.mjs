@@ -1,5 +1,5 @@
 // Tiny dev server: builds once, rebuilds on changes to build inputs, serves
-// dist/ with clean URLs. Node stdlib only — not used in CI or production.
+// dist/ with clean URLs. Node stdlib only - not used in CI or production.
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, watch } from 'node:fs';
 import http from 'node:http';
@@ -23,7 +23,7 @@ const types = {
 
 function build() {
   const res = spawnSync(process.execPath, [path.join(root, 'build.mjs')], { stdio: 'inherit' });
-  if (res.status !== 0) console.error('build failed — still serving the previous output');
+  if (res.status !== 0) console.error('build failed - still serving the previous output');
 }
 
 build();

@@ -55,7 +55,7 @@ const specPages = [...indexMd.matchAll(/\[([^\]]+)\]\(docs\/([A-Za-z0-9_-]+)\.md
   (m) => ({ title: m[1], slug: m[2], file: `${m[2]}.md` }),
 );
 if (specPages.length === 0) {
-  console.error('error: no doc links found in docs/index.md — nav derivation failed.');
+  console.error('error: no doc links found in docs/index.md - nav derivation failed.');
   process.exit(1);
 }
 
@@ -79,7 +79,7 @@ function slugify(html) {
 }
 
 // Rewrite the tool repo's relative links to the site's clean URLs. index.md
-// links as docs/<name>.md; USAGE.md and the spec pages link bare <name>.md —
+// links as docs/<name>.md; USAGE.md and the spec pages link bare <name>.md -
 // both forms are handled. Other repo-relative paths go to github.com.
 function rewriteHref(href) {
   if (/^(https?:|mailto:|#)/.test(href)) return href;
@@ -150,7 +150,7 @@ function renderDoc(page) {
   ];
   return docShell({
     title: `${page.title} · flashtrace`,
-    description: `flashtrace documentation — ${page.title}.`,
+    description: `flashtrace documentation - ${page.title}.`,
     version,
     navGroups,
     toc: state.toc,

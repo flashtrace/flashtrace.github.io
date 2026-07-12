@@ -1,4 +1,4 @@
-// flashtrace website — vanilla JS enhancements. Everything degrades gracefully.
+// flashtrace website - vanilla JS enhancements. Everything degrades gracefully.
 (function () {
   'use strict';
 
@@ -10,7 +10,7 @@
       try {
         localStorage.setItem('ft-theme', next);
       } catch (e) {
-        /* private mode etc. — theme just won't persist */
+        /* private mode etc. - theme just won't persist */
       }
     });
   });
