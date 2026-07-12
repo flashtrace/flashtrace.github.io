@@ -25,13 +25,19 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       # docs are built from the released tool, not its main branch: take the
-      # tag from the dispatch payload, or fall back to the latest release
+      # tag from the dispatch payload, or fall back to the latest release.
+      # An empty tag would make the checkout below silently use the default
+      # branch, so fail loudly instead.
       - name: Resolve flashtrace release ref
         id: ref
         run: |
           tag="${{ github.event.client_payload.tag }}"
           if [ -z "$tag" ]; then
-            tag=$(gh release view --repo flashtrace/flashtrace --json tagName --jq .tagName)
+            tag=$(gh release view --repo flashtrace/flashtrace --json tagName --jq .tagName) || true
+          fi
+          if [ -z "$tag" ]; then
+            echo "::error::no release tag: dispatch payload was empty and flashtrace/flashtrace has no published release"
+            exit 1
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
         env:
