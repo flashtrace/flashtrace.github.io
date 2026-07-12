@@ -924,13 +924,17 @@ h3:hover .heading-anchor,
   color: var(--muted);
 }
 
-.doc-content pre .copy-btn {
-  opacity: 0;
-}
+/* reveal-on-hover only where hover exists; touch devices get a
+   permanently visible button, as there is no way to discover it otherwise */
+@media (hover: hover) {
+  .doc-content pre .copy-btn {
+    opacity: 0;
+  }
 
-.doc-content pre:hover .copy-btn,
-.doc-content pre .copy-btn:focus-visible {
-  opacity: 1;
+  .doc-content pre:hover .copy-btn,
+  .doc-content pre .copy-btn:focus-visible {
+    opacity: 1;
+  }
 }
 
 /* right rail */
