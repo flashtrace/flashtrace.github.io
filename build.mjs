@@ -98,6 +98,9 @@ function rewriteHref(href) {
 // Per-page render state (marked renderer hooks close over this).
 const state = { toc: [], slugCounts: new Map() };
 
+// Docs are trusted first-party input, so we don't sanitize marked's output
+// (raw HTML passes through). Revisit before rendering any untrusted markdown here.
+
 const marked = new Marked({
   gfm: true,
   renderer: {
