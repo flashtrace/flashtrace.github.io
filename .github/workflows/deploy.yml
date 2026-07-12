@@ -31,7 +31,7 @@ jobs:
       - name: Resolve flashtrace release ref
         id: ref
         run: |
-          tag="${{ github.event.client_payload.tag }}"
+          tag="$RAW_TAG"
           if [ -z "$tag" ]; then
             tag=$(gh release view --repo flashtrace/flashtrace --json tagName --jq .tagName) || true
           fi
@@ -41,6 +41,9 @@ jobs:
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
         env:
+          # env, not inline ${{ }}: the dispatch payload is untrusted input and
+          # must reach the shell as data, never as script text
+          RAW_TAG: ${{ github.event.client_payload.tag }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
