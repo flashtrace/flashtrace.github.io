@@ -56,7 +56,7 @@ ${colorizeReport(heroTerminal.output)}</code></pre>
 const steps = [
   {
     title: 'Write specs in Markdown',
-    text: 'An item is a line holding only its ID in backticks. The heading above becomes its title; Needs lists the IDs that must cover it.',
+    text: 'An item is a line holding only its ID in backticks. The heading above becomes its title, the paragraph below its description and Needs lists the IDs that must cover it.',
     snippet: `## Login requirement
 
 \`req:auth/login#1\`
