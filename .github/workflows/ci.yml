@@ -20,10 +20,16 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
+      # An empty tag would make the checkout below silently use the default
+      # branch, so fail loudly instead - same guard as in deploy.yml.
       - name: Resolve flashtrace release ref
         id: ref
         run: |
-          tag=$(gh release view --repo flashtrace/flashtrace --json tagName --jq .tagName)
+          tag=$(gh release view --repo flashtrace/flashtrace --json tagName --jq .tagName) || true
+          if [ -z "$tag" ]; then
+            echo "::error::no release tag: flashtrace/flashtrace has no published release"
+            exit 1
+          fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
