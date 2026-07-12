@@ -70,6 +70,11 @@
 
   // --- copy buttons ---
   function wireCopy(btn, getText) {
+    if (!navigator.clipboard) {
+      // non-secure context: no Clipboard API, so hide the control entirely
+      btn.hidden = true;
+      return;
+    }
     btn.addEventListener('click', function () {
       navigator.clipboard.writeText(getText()).then(function () {
         btn.classList.add('is-copied');
