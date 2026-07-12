@@ -165,7 +165,7 @@ function renderDoc(page) {
 rmSync(dist, { recursive: true, force: true });
 mkdirSync(dist, { recursive: true });
 
-writeFileSync(path.join(dist, 'index.html'), renderLanding({ version }));
+writeFileSync(path.join(dist, 'index.html'), renderLanding({ version, gitRef }));
 
 for (const page of pages) {
   const dir = page.slug ? path.join(dist, 'docs', page.slug) : path.join(dist, 'docs');

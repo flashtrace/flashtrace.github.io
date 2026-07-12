@@ -200,9 +200,9 @@ function examplesSection() {
 
 // --- install -----------------------------------------------------------------
 
-function installSection(version) {
+function installSection(version, gitRef) {
   // raw file at the release ref, so a vendored download matches the docs shown
-  const rawScriptUrl = `${GITHUB_URL}/raw/${esc(version || 'main')}/dist/flashtrace.mjs`;
+  const rawScriptUrl = `${GITHUB_URL}/raw/${esc(gitRef)}/dist/flashtrace.mjs`;
   return `<section class="section" id="install" aria-labelledby="install-title">
   <h2 id="install-title">Install in seconds</h2>
   <p class="section-sub">Two ways in, both ending at the same single file. Current release: <strong>${esc(version)}</strong>.</p>
@@ -225,7 +225,7 @@ npx flashtrace" aria-label="Copy install commands">Copy</button></div>
 
 // --- page ---------------------------------------------------------------------
 
-export function renderLanding({ version }) {
+export function renderLanding({ version, gitRef }) {
   const body = `<main id="main">
 <section class="hero">
   <div class="hero-copy">
@@ -241,7 +241,7 @@ export function renderLanding({ version }) {
 ${howItWorks()}
 ${featureGrid()}
 ${examplesSection()}
-${installSection(version)}
+${installSection(version, gitRef)}
 </main>`;
   return pageShell({
     title: 'flashtrace - lightning-fast, reference-based requirement tracing',
