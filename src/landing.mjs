@@ -45,7 +45,7 @@ function ideMock() {
     </div>
   </div>
   <div class="ide-term">
-    <div class="term-bar">${windowDots()}<span class="ide-title">terminal</span></div>
+    <div class="term-bar"><span class="ide-title">terminal</span></div>
     <pre class="term-body"><code><span class="t-dim">$</span> ${esc(heroTerminal.command)}
 ${colorizeReport(heroTerminal.output)}</code></pre>
   </div>
