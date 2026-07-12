@@ -45,8 +45,9 @@ function readVersion() {
   return '';
 }
 
-const version = readVersion();
-const gitRef = version || 'main'; // for links into the tool repo on github.com
+const resolvedVersion = readVersion();
+const gitRef = resolvedVersion || 'main'; // for links into the tool repo on github.com
+const version = resolvedVersion || 'dev'; // display label (header badge, footer note)
 
 // --- nav order: derived from docs/index.md, the single source of truth -----
 
