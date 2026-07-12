@@ -14,7 +14,7 @@ export function colorizeReport(text) {
   });
   s = s.replace(/✘ missing/g, '<span class="t-red">✘ missing</span>');
   s = s.replace(/\((→ [^)]*)\)/g, '<span class="t-dim">($1)</span>');
-  s = s.replace(/✔/g, '<span class="t-green">✔</span>');
+  s = s.replace(/(?<!t-green">)✔/g, '<span class="t-green">✔</span>');
   s = s.replace(/(?<!t-red">)✘/g, '<span class="t-red">✘</span>');
   s = s.replace(/→/g, '<span class="t-cyan">→</span>');
   s = s.replace(/⚠/g, '<span class="t-yellow">⚠</span>');
