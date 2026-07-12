@@ -12,7 +12,7 @@ const heroSpecPane = `<pre class="code"><code><span class="md-h">## Login requir
 Users must be able to log in
 with email and password.
 
-<span class="tk-kw">Needs:</span> <span class="tk-id">impl:auth/login#1</span></code></pre>`;
+<span class="tk-kw">Needs:</span> <span class="tk-id" data-trace="needs">impl:auth/login#1</span></code></pre>`;
 
 const heroCodePane = `<pre class="code"><code><span class="cmt">// <span class="tk-id" data-trace="to">[impl:auth/login#1]</span></span>
 <span class="kw">export function</span> login(
@@ -28,7 +28,7 @@ function windowDots() {
 }
 
 function ideMock() {
-  return `<div class="ide-mock" role="img" aria-label="Two editor panes - a Markdown spec defining req:auth/login#1 and a TypeScript file tagged [impl:auth/login#1] - connected by a trace; a terminal below shows a clean flashtrace run ending in ok.">
+  return `<div class="ide-mock" role="img" aria-label="Two editor panes - a Markdown spec defining req:auth/login#1 and a TypeScript file tagged [impl:auth/login#1]; a terminal below shows a clean flashtrace run ending in ok.">
   <div class="ide-chrome">
     ${windowDots()}
     <span class="ide-title">requirement tracing</span>
@@ -38,7 +38,6 @@ function ideMock() {
       <div class="pane-tab">spec.md</div>
       ${heroSpecPane}
     </div>
-    <div class="ide-trace" aria-hidden="true"><svg viewBox="0 0 60 24" preserveAspectRatio="none"><path d="M0 12 H60" stroke-dasharray="4 4"/></svg></div>
     <div class="ide-pane">
       <div class="pane-tab">login.ts</div>
       ${heroCodePane}

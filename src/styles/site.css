@@ -446,12 +446,16 @@ button {
 
 .ide-panes {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1fr 1fr;
   align-items: stretch;
 }
 
 .ide-pane {
   min-width: 0;
+}
+
+.ide-pane + .ide-pane {
+  border-left: 1px solid #33302c;
 }
 
 .pane-tab {
@@ -477,27 +481,6 @@ button {
   font-size: 0.8rem;
   line-height: 1.6;
   overflow-x: auto;
-}
-
-.ide-trace {
-  display: flex;
-  align-items: flex-start;
-  width: 3rem;
-  padding-top: 3.1rem;
-  align-self: stretch;
-  border-top: 1px solid #33302c;
-  margin-top: 1.75rem;
-}
-
-.ide-trace svg {
-  width: 100%;
-  height: 24px;
-}
-
-.ide-trace path {
-  stroke: var(--accent);
-  stroke-width: 2;
-  fill: none;
 }
 
 [data-trace] {
@@ -1071,11 +1054,8 @@ h3:hover .heading-anchor,
     grid-template-columns: 1fr;
   }
 
-  .ide-trace {
-    display: none;
-  }
-
-  .ide-pane + .ide-pane .pane-tab {
+  .ide-pane + .ide-pane {
+    border-left: none;
     border-top: 1px solid #33302c;
   }
 
