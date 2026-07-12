@@ -202,6 +202,8 @@ function examplesSection() {
 // --- install -----------------------------------------------------------------
 
 function installSection(version) {
+  // raw file at the release ref, so a vendored download matches the docs shown
+  const rawScriptUrl = `${GITHUB_URL}/raw/${esc(version || 'main')}/dist/flashtrace.mjs`;
   return `<section class="section" id="install" aria-labelledby="install-title">
   <h2 id="install-title">Install in seconds</h2>
   <p class="section-sub">Two ways in, both ending at the same single file. Current release: <strong>${esc(version)}</strong>.</p>
@@ -214,7 +216,7 @@ npx flashtrace" aria-label="Copy install commands">Copy</button></div>
     </div>
     <div class="install-card">
       <h3>Vendored, zero install</h3>
-      <p class="install-note">Download <a href="${GITHUB_URL}/blob/main/dist/flashtrace.mjs">dist/flashtrace.mjs</a> into your repository and run it directly.</p>
+      <p class="install-note">Download <a href="${rawScriptUrl}">dist/flashtrace.mjs</a> into your repository and run it directly.</p>
       <div class="cmd-block"><pre><code>node flashtrace.mjs</code></pre><button class="copy-btn" data-copy="node flashtrace.mjs" aria-label="Copy run command">Copy</button></div>
     </div>
   </div>
