@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import { Marked } from 'marked';
 
-import { docShell, esc, GITHUB_URL, highlightTokens } from './src/layout.mjs';
+import { docShell, esc, GITHUB_URL, highlightTokens, SITE_URL } from './src/layout.mjs';
 import { renderLanding } from './src/landing.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -171,6 +171,16 @@ for (const page of pages) {
   mkdirSync(dir, { recursive: true });
   writeFileSync(path.join(dir, 'index.html'), renderDoc(page));
 }
+
+const sitePaths = ['/', ...pages.map((p) => (p.slug ? `/docs/${p.slug}/` : '/docs/'))];
+writeFileSync(
+  path.join(dist, 'sitemap.xml'),
+  `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${sitePaths.map((p) => `  <url><loc>${SITE_URL}${p}</loc></url>`).join('\n')}
+</urlset>
+`,
+);
 
 cpSync(path.join(root, 'public'), dist, { recursive: true });
 cpSync(path.join(root, 'src', 'styles', 'site.css'), path.join(dist, 'site.css'));
