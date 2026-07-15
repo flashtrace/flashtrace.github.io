@@ -1,27 +1,42 @@
-# Proposal: an interactive tutorial tab ("Learn")
+# Proposal: an interactive tutorial tab ("Try it")
 
-Status: **proposal** — nothing here is implemented yet.
+Status: **proposal, revision 2** — decisions from maintainer review are folded in
+and marked *Decided*; the v1 chapter selection is still open.
 Author: prepared with Claude Code, July 2026.
 
 ## Summary
 
-Add a third top-level tab next to *Home* and *Docs* — working title **Learn**, served
-at `/learn/` — that teaches flashtrace hands-on. The tab is dominated by a large,
-*editable* IDE mock in the spirit of the hero mock on the landing page: a Markdown
-spec editor on the left, an exemplary source file on the right, and a terminal at
-the bottom. The terminal is not a capture: it **executes the real, released
-`dist/flashtrace.mjs`** in the browser against the two editor buffers, treated as
-temporary in-memory files.
+Add a third top-level destination — reached via a **mini CTA button** in the top
+bar's right-hand action group (next to the GitHub and theme buttons), label along
+the lines of **"Try it"** — that teaches flashtrace hands-on. The page is
+dominated by a large, *editable* IDE mock in the spirit of the hero mock on the
+landing page: a Markdown spec editor on the left, an exemplary JavaScript file on
+the right, and a terminal at the bottom. The terminal is not a capture: it
+**executes the real, released `dist/flashtrace.mjs`** in the browser against the
+two editor buffers, treated as temporary in-memory files.
 
 Content is organized into short chapters, each teaching one feature (or a small
 set of connected features) of flashtrace. Two assist buttons — **"Help me"** and
 **"Do the next step for me"** — explain respectively perform the next step *inside*
 the IDE, via anchored popups and (for the second button) a typewriter edit.
 Progress is tracked in an explicit per-chapter map in `localStorage`, keyed by
-stable chapter ids so that newly inserted chapters are never auto-checked.
+stable chapter ids so that newly inserted chapters are never auto-checked; each
+entry carries detailed metadata (title, a content-hash identity of the chapter
+definition, language, assist usage).
 
 A proof of concept for the critical piece — running the unmodified bundle against
 an in-memory filesystem — was built and works; see [Appendix A](#appendix-a-proof-of-concept).
+
+## Naming & internal naming (Decided)
+
+The public label ("Try it", "Try Editor", "Try It Out", …) may be swapped at any
+time, so nothing internal derives from it:
+
+- **URL**: `/try/` (short, label-agnostic enough; if ever renamed, the old path
+  keeps a redirect stub).
+- **Code & storage names**: `tutorial` throughout — `src/tutorial.mjs`,
+  `src/scripts/tutorial.js`, `localStorage` keys `ft-tutorial-*`. Renaming the
+  button never touches code or invalidates stored progress.
 
 ## Goals
 
@@ -32,34 +47,37 @@ an in-memory filesystem — was built and works; see [Appendix A](#appendix-a-pr
   releases without manual re-capturing.
 - Keep the site's constraints intact: static hosting, zero runtime dependencies,
   minimal dev dependencies, graceful degradation.
+- Structure all chapter content for **multiple code languages** from day one
+  (Decided): v1 ships Markdown specs + JavaScript code only, but chapter
+  definitions keep every language-specific detail in per-language variant data so
+  further languages slot in without touching the engine or the neutral parts.
 
 ## Non-goals (v1)
 
 - A free-form multi-file playground (the two-pane layout is fixed per chapter;
   a "Playground" could later reuse the same runner).
-- Persisting editor buffers across visits (only chapter *completion* persists; a
-  buffer-restore feature can come later).
+- Additional code-pane languages (the data model is ready; content lands later).
 - Syntax highlighting while typing (progressive enhancement, see milestone M4).
 - Server-side anything.
 
-## The tab and its layout
+## Entry point and layout
 
-`/learn/` becomes a third entry in the top bar (`topBar()` in `src/layout.mjs`
-gains one link; `active: 'learn'`). Proposed name **Learn** — short, honest about
-the guided nature, and leaves "Playground" free for a future sandbox. Alternatives:
-*Tutorial*, *Try it* (see open questions).
+Instead of a third plain nav link, the top bar's action group gains a small
+call-to-action button (Decided) — visually a compact `btn-primary`, sitting left
+of the GitHub icon, rendered by `topBar()` in `src/layout.mjs`. On the `/try/`
+page itself it renders in an active/current state.
 
 The page is a two-column layout, mirroring the docs shell's proportions but with
 the IDE where the article would be:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│ topbar:  flashtrace  v0.7.1   Home  Docs  Learn                 ⌂ ☾  │
+│ topbar:  flashtrace  v0.7.1   Home  Docs          [ Try it ]  ⌂  ☾   │
 ├────────────┬─────────────────────────────────────────────────────────┤
 │ CHAPTERS   │  ┌─ ide (large, fills the column) ─────────────────────┐│
 │            │  │ ● ● ●   ch. 2: cover a requirement    [Reset files] ││
 │ ✓ 1 Your   │  ├──────────────────────────┬──────────────────────────┤│
-│     first  │  │ spec.md                  │ login.ts                 ││
+│     first  │  │ spec.md                  │ login.js                 ││
 │     item   │  │ ┌──────────────────────┐ │ ┌──────────────────────┐ ││
 │ ▶ 2 Cover  │  │ │## Login              │ │ │export function login│ ││
 │     a req. │  │ │                      │ │ │  ...                 │ ││
@@ -82,16 +100,19 @@ the IDE where the article would be:
 Key points:
 
 - **Chapter rail** (left): reuses the docs sidebar component and its mobile
-  drawer behavior; each entry shows a completion check from the progress map.
+  drawer behavior; each entry shows a completion check from the progress map,
+  with a distinct mark for assisted completions.
 - **IDE mock**: visually derived from the hero's `.ide-mock` (chrome bar with
   dots, pane tabs, terminal bar) but sized to fill the main column — roughly
   the space `.doc-main` + `.toc` occupy on docs pages, with a min-height that
   keeps editors and terminal comfortably usable. The hero mock stays untouched;
   shared styles get extracted into common classes where that falls out naturally.
 - **Editors**: two `<textarea>` elements styled like the hero panes (same font,
-  padding, colors). Plain textareas are the v1 baseline; a transparent-textarea-
-  over-highlighted-`<pre>` overlay (reusing `highlightTokens`) is a later,
-  zero-dependency enhancement.
+  padding, colors). Left pane is always the Markdown spec; the right pane's file
+  name, contents and comment syntax come from the chapter's language variant —
+  `js` in v1 (Decided). Plain textareas are the v1 baseline; a
+  transparent-textarea-over-highlighted-`<pre>` overlay (reusing
+  `highlightTokens`) is a later, zero-dependency enhancement.
 - **Terminal**: read-only output area with a **Run** button (and
   <kbd>Ctrl</kbd>+<kbd>Enter</kbd> in either editor). Output is the CLI's plain
   text, colorized with the already-existing `colorizeReport()` from
@@ -130,7 +151,7 @@ At **build time**, `build.mjs` (which already requires the tool repo clone — C
 checks out the full repo, so `dist/flashtrace.mjs` is guaranteed present next to
 the docs it already consumes):
 
-- copies `flashtrace/dist/flashtrace.mjs` into `dist/learn/`, rewriting only the
+- copies `flashtrace/dist/flashtrace.mjs` into `dist/try/`, rewriting only the
   five `from "node:<name>"` specifiers to `from "./shims/<name>.mjs"` — a fixed,
   anchored regex; every other byte ships verbatim;
 - copies five small shim modules (~150 lines total, see Appendix A) providing an
@@ -177,37 +198,49 @@ problems") instead of regex-matching terminal text.
   bundle. User keystrokes are *data* parsed by flashtrace, never evaluated. The
   worker has no DOM and no network use.
 
-## Chapters
+## Chapter data model (language-ready, Decided)
 
-Each chapter is defined in `src/learn/chapters.mjs` as data: stable `id`, title,
-short intro, the two starting files, the argv, an ordered list of steps, and a
-done-condition. Draft curriculum, each mapped to the doc page it teaches:
-
-| # | id | Title | Teaches (docs) |
-|---|----|-------|----------------|
-| 1 | `first-item` | Your first item | Item anatomy: heading, backtick ID line, description ([Markdown items](/docs/markdown-items/), [Item IDs](/docs/item-ids/)) |
-| 2 | `cover-a-need` | Cover a requirement | `Needs:` lists + tagging code comments ([Code tags](/docs/code-tags/)) |
-| 3 | `read-the-report` | Read the report | Starts defective on purpose: uncovered + unwanted; fix both ([Command line](/docs/command-line/), exit codes) |
-| 4 | `revisions` | Revisions & wildcards | Bump `#1` → `#2`, see the mismatch, accept `#2.x` ([Revisions](/docs/revisions/)) |
-| 5 | `deep-coverage` | Demands & deep coverage | `[>>utest:…]` demand tags, transitive chains, shallow vs deep, `-v` ([Coverage rules](/docs/coverage-rules/)) |
-| 6 | `forwarding` | Forwarding | `[req:… --> dsn:…]` delegation ([Forwarding](/docs/forwarding/)) |
-| 7 | `tags-and-filtering` | Tags & scoped runs | `Tags:` lines and `-t` runs ([Command line](/docs/command-line/)) |
-
-Chapters 2–4 deliberately walk the same login example the hero and landing
-examples use, so the site tells one continuous story. Every chapter ends with a
-"read more" link into the corresponding docs page.
-
-A **step** is data too:
+Each chapter in `src/tutorial/chapters.mjs` separates language-neutral content
+from per-language variants. v1 ships only the `js` variant; adding a language
+later means adding one entry per chapter, nothing else:
 
 ```js
 {
-  explain: 'The spec demands an implementation. Tag the login function with a comment holding the ID in brackets.',
-  pane: 'code',                       // which editor the step concerns
-  anchor: /export function login/,    // where to point the popup (line located at runtime)
-  patch: { insertBefore: /export function login/, text: '// [impl:auth/login#1]\n' },
-  check: (result) => result.items.some((i) => i.id === 'impl:auth/login#1'),
+  id: 'cover-a-need',              // stable forever; the progress-map key
+  title: 'Cover a requirement',
+  intro: '…',
+  docs: ['/docs/code-tags/'],
+  argv: [],                        // extra CLI args after the directory
+  spec: { file: 'spec.md', body: '…' },          // language-neutral (Markdown)
+  variants: {
+    js: {
+      file: 'login.js',
+      body: 'export function login(email, password) { … }',
+      // language-specific step fragments referenced by key from `steps`
+      anchors: { loginFn: /export function login/ },
+      snippets: { implTag: '// [impl:auth/login#1]\n' },
+    },
+    // later: ts, py, sql, … — same keys, different syntax
+  },
+  steps: [
+    {
+      explain: 'Tag the login function with a comment holding the ID in brackets.',
+      pane: 'code',
+      anchor: 'loginFn',                            // resolved via the variant
+      patch: { insertBefore: 'loginFn', snippet: 'implTag' },
+      check: (r) => r.items.some((i) => i.id === 'impl:auth/login#1'),
+    },
+    // …
+  ],
+  done: (r) => r.clean,
 }
 ```
+
+The chapter's **identity hash** is computed at build time: `sha256` over the
+canonical JSON of the full chapter definition (including the active variant),
+truncated to 12 hex chars and embedded in the page data. Content-derived beats a
+hand-maintained semver here: any fix or change — even a typo in a step text —
+automatically yields a new identity, with nothing to remember to bump.
 
 The *current* step is always computed, never stored: it is the first step whose
 `check` fails against the latest buffers/analysis. That makes assists idempotent
@@ -234,37 +267,119 @@ Popups are plain absolutely-positioned elements within the IDE container — no
 library. Anchoring uses a hidden mirror `<pre>` of the textarea content to
 resolve a line's y-offset (a well-known, dependency-free technique).
 
-## Progress tracking in localStorage
+## localStorage: progress and buffers (Decided)
 
-One explicit map, versioned, keyed **only by chapter id** — never by index:
+### Progress map — `ft-tutorial-progress`
+
+One explicit map, versioned, keyed **only by chapter id** — never by index.
+Entries are detailed records:
 
 ```json
-// localStorage["ft-learn-progress"]
 {
   "v": 1,
   "chapters": {
-    "first-item":   { "completedAt": "2026-07-13T14:02:11Z" },
-    "cover-a-need": { "completedAt": "2026-07-13T14:09:40Z" }
+    "first-item": {
+      "title": "Your first item",
+      "rev": "9c41d0aa73b2",
+      "lang": "js",
+      "completedAt": "2026-07-13T14:02:11Z",
+      "assists": { "help": 0, "auto": 0 }
+    },
+    "cover-a-need": {
+      "title": "Cover a requirement",
+      "rev": "3f9ab2c4e1d0",
+      "lang": "js",
+      "completedAt": "2026-07-13T14:09:40Z",
+      "assists": { "help": 2, "auto": 1 }
+    }
   }
 }
 ```
 
-Rules:
+- `title` — the chapter title at completion time (self-describing data even if
+  the chapter is later renamed or removed).
+- `rev` — the chapter identity hash the user actually completed (see above), so
+  a later content fix or rework is distinguishable from the completed state; the
+  UI can e.g. show "chapter updated since you completed it" without unchecking.
+- `lang` — the code-pane language the chapter was completed in; when more
+  languages exist, per-language completion can extend this record without a
+  schema break.
+- `assists` — per-chapter counters for "Help me" (`help`) and "Do the next step
+  for me" (`auto`). Any non-zero count flags the completion as assisted (Decided)
+  and renders a distinct check mark in the rail; the counters keep the full detail.
+
+Rules (unchanged from revision 1):
 
 - An entry is written exactly once per chapter: when its done-condition first
-  passes after a real Run **initiated in this browser**. There is no other code
-  path that marks completion.
-- Rendering asks `progress.chapters[id] !== undefined` per chapter. A chapter id
-  absent from the map is *unstarted* — so inserting new chapters between shipped
-  ones (or reordering, renaming titles, editing content) can never auto-check
-  them. Only deleting/renaming an *id* orphans an entry, and orphans are simply
-  ignored (kept, in case the id returns).
-- Unparseable/foreign-versioned JSON degrades to "no progress" without crashing,
-  matching the theme-toggle's defensive `try/catch` pattern; same for private
-  browsing (progress just doesn't persist).
-- Using a chapter's assist buttons does not exclude completion — the goal is
-  learning, not gatekeeping. (Open question below.)
+  passes after a real Run initiated in this browser. No other code path marks
+  completion.
+- A chapter id absent from the map is *unstarted* — inserting, reordering,
+  renaming or editing chapters can never auto-check anything. Orphaned entries
+  (removed ids) are kept and ignored.
+- Unparseable/foreign-versioned JSON degrades to "no progress" without crashing;
+  private-browsing failures mean progress simply doesn't persist.
 - A small "reset progress" control lives at the bottom of the chapter rail.
+
+### Editor buffers — `ft-tutorial-buffers` (Decided)
+
+In-flight work persists too, saved (debounced) on edit:
+
+```json
+{
+  "v": 1,
+  "chapters": {
+    "cover-a-need": {
+      "rev": "3f9ab2c4e1d0",
+      "lang": "js",
+      "savedAt": "2026-07-13T14:05:02Z",
+      "spec": "## Login…",
+      "code": "export function login…"
+    }
+  }
+}
+```
+
+Opening a chapter whose stored buffers differ from the chapter's start state
+shows a **modal**: *"You have work in progress from &lt;relative time&gt; — resume it,
+or start fresh?"* with [Resume] / [Start fresh] (start-fresh discards the stored
+buffers). If the stored `rev` differs from the current chapter identity, the
+modal says so ("this chapter has been updated since") — resuming is still
+offered, since buffers are just text. Completing a chapter clears its buffer
+entry; buffers of completed chapters are not retained.
+
+## Chapters — candidate curriculum (selection pending)
+
+All chapters use the continuous login/auth story the hero and landing examples
+already tell. Candidates, grouped; the v1 set is being selected by the
+maintainer:
+
+**Foundations**
+
+| # | id | Title | Teaches (docs) |
+|---|----|-------|----------------|
+| 1 | `first-item` | Your first item | Item anatomy: heading, backtick ID line, description ([Markdown items](/docs/markdown-items/), [Item IDs](/docs/item-ids/)) |
+| 2 | `cover-a-need` | Cover a requirement | `Needs:` lists + tagging code comments ([Code tags](/docs/code-tags/)) |
+| 3 | `read-the-report` | Read the report | Starts defective on purpose: uncovered + unwanted; fix both; exit codes ([Command line](/docs/command-line/)) |
+| 4 | `covers-and-orphans` | Covers: & orphans | Coverage declared from the covering side; the orphaned defect; Covers is only valid if the target Needs it back ([Markdown items](/docs/markdown-items/), [Coverage rules](/docs/coverage-rules/)) |
+
+**Features**
+
+| # | id | Title | Teaches (docs) |
+|---|----|-------|----------------|
+| 5 | `revisions` | Revisions & wildcards | Bump `#1` → `#2`, see the mismatch hint, accept `#2.x` ([Revisions](/docs/revisions/)) |
+| 6 | `deep-coverage` | Demands & deep coverage | `[>>utest:…]` demand tags, transitive chains, shallow vs deep, `-v` ([Coverage rules](/docs/coverage-rules/)) |
+| 7 | `forwarding` | Forwarding | `[req:… --> dsn:…]` delegation ([Forwarding](/docs/forwarding/)) |
+| 8 | `tags-and-filtering` | Tags & scoped runs | `Tags:` lines and `-t` runs; first chapter where the user changes the command, not the files ([Command line](/docs/command-line/)) |
+
+**Extras**
+
+| # | id | Title | Teaches |
+|---|----|-------|---------|
+| 9 | `capstone` | Fix a messy trace | No new syntax; one of each defect class (uncovered, unwanted, orphaned, duplicate, parse-level problem) to fix with everything learned |
+| 10 | `keyword-tables` | Needs/Covers from tables | Bullet-list keywords and table columns headed `Needs`/`Covers`/`Tags` |
+| 11 | `anchored-demands` | Anchored demand tags | Explicit `[<source-id> >> <target-id>]` vs the implicit nearest-preceding form |
+
+Every chapter ends with a "read more" link into the corresponding docs page.
 
 ## Implementation plan
 
@@ -272,25 +387,28 @@ New/changed files (all vanilla, no new dependencies):
 
 | File | Purpose |
 |---|---|
-| `src/learn.mjs` | Page renderer (shell, chapter rail, IDE skeleton, no-JS fallback content) |
-| `src/learn/chapters.mjs` | Chapter/step data + done-conditions (build-time verified, embedded into the page as JSON) |
-| `src/learn/shims/{fs,path,process,url,child_process}.mjs` | Browser shims, copied into `dist/learn/shims/` |
-| `src/scripts/learn.js` | Tab UI: editors, run orchestration, assists, progress map |
-| `src/scripts/learn-worker.js` | Worker bootstrap: seed vfs, import bundle, capture output, post results |
-| `build.mjs` | Emit `/learn/`, rewrite+copy the bundle, run chapter verification, extend sitemap |
-| `src/layout.mjs` | Third top-bar link |
-| `src/styles/site.css` | Large-IDE layout, editor/terminal, spotlight/popup, chapter rail states |
+| `src/tutorial.mjs` | Page renderer (shell, chapter rail, IDE skeleton, no-JS fallback content) |
+| `src/tutorial/chapters.mjs` | Chapter/step data with language variants + done-conditions (build-time verified, embedded into the page as JSON together with the computed identity hashes) |
+| `src/tutorial/shims/{fs,path,process,url,child_process}.mjs` | Browser shims, copied into `dist/try/shims/` |
+| `src/scripts/tutorial.js` | Tab UI: editors, run orchestration, assists, progress map, buffer persistence + resume modal |
+| `src/scripts/tutorial-worker.js` | Worker bootstrap: seed vfs, import bundle, capture output, post results |
+| `build.mjs` | Emit `/try/`, rewrite+copy the bundle, compute chapter hashes, run chapter verification, extend sitemap |
+| `src/layout.mjs` | CTA button in the top bar's action group |
+| `src/styles/site.css` | Large-IDE layout, editor/terminal, spotlight/popup, modal, chapter rail states |
 
 Milestones — one branch/PR each, in line with the repo's one-change-per-branch rule:
 
 - **M1 — runner**: build-time bundle rewrite + shims + worker + a bare page with
   two editors and a Run button. Proves the pipeline on the live site.
-- **M2 — chapters + progress**: chapter data model, rail, done-conditions,
-  localStorage map, build-time chapter verification, no-JS fallback.
+- **M2 — chapters + persistence**: chapter data model with variants and identity
+  hashes, rail, done-conditions, progress map with assist flags, buffer
+  persistence with the resume/start-fresh modal, build-time chapter
+  verification, no-JS fallback.
 - **M3 — assists**: spotlight, popups, "Help me", "Do the next step for me",
-  typewriter, reduced-motion handling.
+  typewriter, reduced-motion handling, assist counters feeding the progress map.
 - **M4 — polish**: editor highlight overlay, mobile layout (stacked panes,
-  collapsible rail), a11y pass (aria-live terminal output, keyboard flow).
+  collapsible rail), a11y pass (aria-live terminal output, keyboard flow,
+  modal focus trap).
 
 ## Risks & mitigations
 
@@ -305,18 +423,24 @@ Milestones — one branch/PR each, in line with the repo's one-change-per-branch
   v1; the overlay technique in M4 upgrades it without dependencies.
 - **Popup positioning across zoom/mobile**: anchors degrade to pane-level
   (attach to the pane tab) below a width threshold.
+- **Chapter identity churn**: because `rev` is content-derived, *any* edit marks
+  completed chapters as "updated since". That is intended (honest data); the UI
+  treats it as an annotation, never as un-completion.
 
-## Open questions
+## Decision log
 
-1. **Tab name**: *Learn* (recommended) vs *Tutorial* vs *Try it*?
-2. Should assisted steps mark a chapter as completed identically, or flag it
-   (e.g. "completed with help") in the progress map (schema supports adding a
-   field later)?
-3. v1 scope: all seven chapters, or ship M1–M3 with chapters 1–3 and grow?
-4. Should the right pane's language vary per chapter (e.g. one SQL chapter to
-   showcase multi-language tags), or stay TypeScript throughout for continuity?
-5. Persist editor buffers per chapter (`ft-learn-buffers`) so a reload keeps
-   in-flight work, or is Reset-to-start-state semantics per visit fine?
+1. ~~Tab name/placement~~ → **mini CTA button** top-right in the navbar next to
+   theme/GitHub; label ("Try it" / "Try Editor" / …) swappable later; internal
+   names decoupled (`/try/` URL, `tutorial` code/storage names).
+2. ~~Assisted completions~~ → **flagged**, with per-chapter `help`/`auto`
+   counters; progress entries carry detailed data including title and a
+   content-hash chapter identity (`rev`).
+3. **v1 chapter scope** → open, selection from the candidate curriculum above.
+4. ~~Languages~~ → Markdown spec + **JavaScript** code in v1; all
+   language-specific content lives in per-chapter `variants` so more languages
+   are additive.
+5. ~~Buffer persistence~~ → **yes**, per chapter in `ft-tutorial-buffers`, with a
+   resume-or-start-fresh **modal** when returning to a chapter in progress.
 
 ---
 
