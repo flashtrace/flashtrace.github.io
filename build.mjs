@@ -11,6 +11,7 @@ import { docShell, esc, EXT_ATTRS, GITHUB_URL, highlightTokens, SITE_URL } from 
 import { renderLanding } from './src/landing.mjs';
 import { renderImpressum } from './src/impressum.mjs';
 import { renderLicense } from './src/license.mjs';
+import { renderTutorial } from './src/tutorial.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.join(root, 'dist');
@@ -174,6 +175,41 @@ function renderDoc(page) {
   });
 }
 
+// --- /try/ runner: the release bundle, node builtins rewritten to shims -----
+
+// CI checks out the full tool repo, so dist/flashtrace.mjs sits next to the
+// docs the build already consumes. Locally the clone provides it the same way.
+const bundlePath = path.join(docsDir, '..', 'dist', 'flashtrace.mjs');
+if (!existsSync(bundlePath)) {
+  console.error(
+    `error: flashtrace bundle not found at ${bundlePath} - the /try/ page runs the release build in the browser and needs it. ` +
+      'Make sure the tool repo checkout includes dist/.',
+  );
+  process.exit(1);
+}
+
+// The exact builtin set the shims in src/tutorial/shims/ cover. A release
+// that imports anything else (or drops one) must fail the build here, never
+// silently ship a broken /try/ page.
+const SHIMMED_BUILTINS = ['child_process', 'fs', 'path', 'process', 'url'];
+
+function rewriteBundle(source) {
+  const found = new Set();
+  const rewritten = source.replace(/from "node:([a-z_]+)"/g, (m, name) => {
+    found.add(name);
+    return `from "./shims/${name}.mjs"`;
+  });
+  const actual = [...found].sort();
+  if (actual.join(',') !== SHIMMED_BUILTINS.join(',')) {
+    console.error(
+      `error: flashtrace.mjs imports node builtins [${actual.join(', ')}] but the /try/ shims cover exactly [${SHIMMED_BUILTINS.join(', ')}].\n` +
+        'Align src/tutorial/shims/ (and this assertion) with the release bundle.',
+    );
+    process.exit(1);
+  }
+  return rewritten;
+}
+
 // --- emit --------------------------------------------------------------------
 
 rmSync(dist, { recursive: true, force: true });
@@ -193,9 +229,19 @@ for (const page of pages) {
   writeFileSync(path.join(dir, 'index.html'), renderDoc(page));
 }
 
+const tryDir = path.join(dist, 'try');
+mkdirSync(tryDir, { recursive: true });
+writeFileSync(path.join(tryDir, 'index.html'), renderTutorial({ version }));
+writeFileSync(path.join(tryDir, 'flashtrace.mjs'), rewriteBundle(readFileSync(bundlePath, 'utf8')));
+cpSync(path.join(root, 'src', 'tutorial', 'shims'), path.join(tryDir, 'shims'), { recursive: true });
+cpSync(path.join(root, 'src', 'scripts', 'tutorial.js'), path.join(tryDir, 'tutorial.js'));
+cpSync(path.join(root, 'src', 'scripts', 'tutorial-worker.js'), path.join(tryDir, 'tutorial-worker.js'));
+cpSync(path.join(root, 'src', 'report-colors.mjs'), path.join(tryDir, 'report-colors.mjs'));
+
 const sitePaths = [
   '/',
   ...pages.map((p) => (p.slug ? `/docs/${p.slug}/` : '/docs/')),
+  '/try/',
   '/license/',
   '/impressum/',
 ];
