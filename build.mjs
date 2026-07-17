@@ -10,6 +10,7 @@ import { Marked } from 'marked';
 import { docShell, esc, GITHUB_URL, highlightTokens, SITE_URL } from './src/layout.mjs';
 import { renderLanding } from './src/landing.mjs';
 import { renderImpressum } from './src/impressum.mjs';
+import { renderLicense } from './src/license.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.join(root, 'dist');
@@ -31,6 +32,15 @@ function locateDocs() {
 }
 
 const docsDir = locateDocs();
+
+// --- license: raw text from the tool repo root, next to docs/ ---------------
+
+const licensePath = path.join(docsDir, '..', 'LICENSE');
+if (!existsSync(licensePath)) {
+  console.error(`error: LICENSE not found at ${licensePath}`);
+  process.exit(1);
+}
+const licenseText = readFileSync(licensePath, 'utf8');
 
 // --- version: release tag from env, else the tool repo's package.json ------
 
@@ -174,13 +184,21 @@ writeFileSync(path.join(dist, 'index.html'), renderLanding({ version, gitRef }))
 mkdirSync(path.join(dist, 'impressum'), { recursive: true });
 writeFileSync(path.join(dist, 'impressum', 'index.html'), renderImpressum({ version }));
 
+mkdirSync(path.join(dist, 'license'), { recursive: true });
+writeFileSync(path.join(dist, 'license', 'index.html'), renderLicense({ version, text: licenseText }));
+
 for (const page of pages) {
   const dir = page.slug ? path.join(dist, 'docs', page.slug) : path.join(dist, 'docs');
   mkdirSync(dir, { recursive: true });
   writeFileSync(path.join(dir, 'index.html'), renderDoc(page));
 }
 
-const sitePaths = ['/', ...pages.map((p) => (p.slug ? `/docs/${p.slug}/` : '/docs/')), '/impressum/'];
+const sitePaths = [
+  '/',
+  ...pages.map((p) => (p.slug ? `/docs/${p.slug}/` : '/docs/')),
+  '/license/',
+  '/impressum/',
+];
 writeFileSync(
   path.join(dist, 'sitemap.xml'),
   `<?xml version="1.0" encoding="UTF-8"?>
@@ -194,4 +212,4 @@ cpSync(path.join(root, 'public'), dist, { recursive: true });
 cpSync(path.join(root, 'src', 'styles', 'site.css'), path.join(dist, 'site.css'));
 cpSync(path.join(root, 'src', 'scripts', 'site.js'), path.join(dist, 'site.js'));
 
-console.log(`built ${pages.length + 2} pages into dist/ (flashtrace ${version || 'unknown version'})`);
+console.log(`built ${pages.length + 3} pages into dist/ (flashtrace ${version || 'unknown version'})`);
