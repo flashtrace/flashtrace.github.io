@@ -18,6 +18,9 @@
   --tk-id: #b45309;
   --tk-kw: #92400e;
   --tk-arrow: #0e7490;
+  --ok: #15803d;
+  --no: #b91c1c;
+  --info: #0e7490;
   --shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 8px 24px rgb(0 0 0 / 0.06);
   --topbar-h: 3.5rem;
   color-scheme: light;
@@ -39,6 +42,9 @@
   --tk-id: #f9c21d;
   --tk-kw: #e8964a;
   --tk-arrow: #56b6c2;
+  --ok: #3fb950;
+  --no: #f85149;
+  --info: #56b6c2;
   --shadow: 0 1px 3px rgb(0 0 0 / 0.5), 0 8px 24px rgb(0 0 0 / 0.35);
   color-scheme: dark;
 }
@@ -61,6 +67,9 @@
     --tk-id: #f9c21d;
     --tk-kw: #e8964a;
     --tk-arrow: #56b6c2;
+    --ok: #3fb950;
+    --no: #f85149;
+    --info: #56b6c2;
     color-scheme: dark;
   }
 }
@@ -993,10 +1002,148 @@ h3:hover .heading-anchor,
   padding-bottom: 3.5rem;
 }
 
+.page-legal .doc-content {
+  margin-inline: auto;
+}
+
 .legal address {
   font-style: normal;
   line-height: 1.7;
   color: var(--text);
+}
+
+/* license: the tool repo's raw LICENSE text. Shrink-wrap the block and center
+   it so the text's own space-centered header reads as intended. */
+.license-doc {
+  max-width: 52rem;
+}
+
+.license-doc h1 {
+  text-align: center;
+}
+
+.license-doc pre {
+  width: fit-content;
+  max-width: 100%;
+  margin: 1.75rem auto 0;
+  padding: 2rem 2.5rem;
+  font-size: 0.9rem;
+}
+
+/* GitHub-style summary panel above the raw license text */
+.license-summary {
+  margin-top: 1.75rem;
+  padding: 1.5rem 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-raised);
+  box-shadow: var(--shadow);
+}
+
+.license-summary-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: var(--muted);
+}
+
+.license-summary-kicker {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.license-summary-name {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 650;
+  line-height: 1.3;
+  color: var(--text);
+}
+
+.license-summary-desc {
+  margin: 1rem 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.license-summary-cols {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.license-col-label {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.license-col ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.license-col li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0;
+  font-size: 0.85rem;
+}
+
+.license-col li svg {
+  flex-shrink: 0;
+}
+
+.lic-ok svg {
+  color: var(--ok);
+}
+
+.lic-no svg {
+  color: var(--no);
+}
+
+.lic-info svg {
+  color: var(--info);
+}
+
+.license-summary-note {
+  margin: 1.5rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* labeled divider between the summary panel and the raw text */
+.license-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 3rem 0 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.license-divider::before,
+.license-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 640px) {
+  .license-summary-cols {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ---------- responsive ---------- */
