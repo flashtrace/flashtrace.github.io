@@ -239,6 +239,7 @@ cpSync(path.join(root, 'src', 'tutorial', 'chapter-utils.mjs'), path.join(tryDir
 cpSync(path.join(root, 'src', 'scripts', 'tutorial.js'), path.join(tryDir, 'tutorial.js'));
 cpSync(path.join(root, 'src', 'scripts', 'tutorial-worker.js'), path.join(tryDir, 'tutorial-worker.js'));
 cpSync(path.join(root, 'src', 'report-colors.mjs'), path.join(tryDir, 'report-colors.mjs'));
+cpSync(path.join(root, 'src', 'highlight.mjs'), path.join(tryDir, 'highlight.mjs'));
 
 // Every chapter's start state and each step's cumulative patched state runs
 // through the exact bundle the browser executes; behavioral drift in a

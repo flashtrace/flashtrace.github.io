@@ -1243,6 +1243,7 @@ h3:hover .heading-anchor,
   padding: 0.3rem 0.85rem;
   border-radius: 999px;
   font-size: 0.85rem;
+  white-space: nowrap;
 }
 
 .btn-cta[aria-current='page'] {
@@ -1584,6 +1585,42 @@ h3:hover .heading-anchor,
 .editor:focus-visible {
   outline: none;
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+/* highlight overlay: transparent textarea over an identical-metrics <pre>;
+   built by tutorial.js, so the no-JS page keeps plain visible textareas */
+
+.editor-wrap {
+  position: relative;
+  border-top: 1px solid #33302c;
+}
+
+.editor-wrap .editor {
+  position: relative;
+  z-index: 1;
+  border-top: none;
+  background: transparent;
+  color: transparent;
+}
+
+.editor-overlaid::selection {
+  background: rgb(86 156 214 / 0.35);
+  color: transparent;
+}
+
+.editor-highlight {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0.9rem 1rem;
+  overflow: hidden;
+  background: var(--code-bg);
+  color: var(--code-text);
+  font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  white-space: pre;
+  tab-size: 2;
 }
 
 .ide-lg .term-lg {

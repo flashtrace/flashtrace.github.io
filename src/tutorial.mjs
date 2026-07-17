@@ -165,7 +165,7 @@ ${chapterRail()}
 ${ide(first)}
 <div class="assist-bar" id="assist-bar">
   <p class="assist-goal"><strong>Goal:</strong> <span id="goal-text">${esc(first.goal)}</span></p>
-  <p class="assist-progress" id="step-progress">Run to check your progress.</p>
+  <p class="assist-progress" id="step-progress" aria-live="polite">Run to check your progress.</p>
   <div class="assist-actions">
     <button type="button" id="help-btn" class="btn btn-secondary" disabled>Help me</button>
     <button type="button" id="auto-btn" class="btn btn-secondary" disabled>Do the next step for me</button>

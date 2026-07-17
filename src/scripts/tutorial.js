@@ -5,6 +5,7 @@
 // stable chapter ids - never by index. Loaded as a module; browsers without
 // module support keep the server-rendered read-only fallback.
 import { applyStep } from './chapter-utils.mjs';
+import { highlightTokens } from './highlight.mjs';
 import { colorizeReport, esc } from './report-colors.mjs';
 
 const ide = document.getElementById('ide');
@@ -82,7 +83,48 @@ let active = null; // { worker, watchdog, silent } of the run in flight
 let saveTimer = null;
 let checkTimer = null;
 
+// --- editor highlight overlay ------------------------------------------------
+// A transparent textarea over a highlightTokens-rendered <pre> with identical
+// metrics, scroll-synced. Built at runtime so the no-JS page keeps plain
+// server-rendered textareas.
+
+const highlightRenderers = [];
+
+function setupHighlight(editor) {
+  const wrap = document.createElement('div');
+  wrap.className = 'editor-wrap';
+  const pre = document.createElement('pre');
+  pre.className = 'editor-highlight';
+  pre.setAttribute('aria-hidden', 'true');
+  const code = document.createElement('code');
+  pre.appendChild(code);
+  editor.parentNode.insertBefore(wrap, editor);
+  wrap.appendChild(pre);
+  wrap.appendChild(editor);
+  editor.classList.add('editor-overlaid');
+  const sync = () => {
+    pre.scrollTop = editor.scrollTop;
+    pre.scrollLeft = editor.scrollLeft;
+  };
+  const render = () => {
+    // trailing newline keeps the pre's last line height in step with the textarea
+    code.innerHTML = highlightTokens(esc(editor.value)) + '\n';
+    sync();
+  };
+  editor.addEventListener('input', render);
+  editor.addEventListener('scroll', sync);
+  highlightRenderers.push(render);
+  render();
+}
+
+// call after every programmatic .value assignment (seeding, resume, reset)
+function refreshHighlights() {
+  for (const render of highlightRenderers) render();
+}
+
 function init() {
+  setupHighlight(specEditor);
+  setupHighlight(codeEditor);
   runButton.addEventListener('click', () => run(false));
   for (const editor of [specEditor, codeEditor]) {
     editor.addEventListener('keydown', (event) => {
@@ -167,6 +209,7 @@ function seedBuffers() {
   specEditor.value = current.spec.body;
   codeEditor.value = current.variant.body;
   if (argvInput) argvInput.value = current.argv.join(' ');
+  refreshHighlights();
 }
 
 function openChapter(id) {
@@ -230,6 +273,7 @@ function offerResume(chapter, stored) {
     specEditor.value = String(stored.spec);
     codeEditor.value = String(stored.code);
     if (argvInput) argvInput.value = chapter.argv.join(' ');
+    refreshHighlights();
     scheduleSilentRun();
   };
   if (!modal || typeof modal.showModal !== 'function') {
@@ -633,6 +677,7 @@ function typewriter(editor, start, oldEnd, insert, onDone) {
   const timer = setInterval(() => {
     const piece = insert.slice(done, done + chunk);
     editor.setRangeText(piece, pos, pos, 'end');
+    refreshHighlights(); // the overlay shows the text; the textarea is transparent
     pos += piece.length;
     done += chunk;
     if (done >= insert.length) {
