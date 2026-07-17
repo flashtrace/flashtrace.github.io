@@ -1182,7 +1182,8 @@ h3:hover .heading-anchor,
 }
 
 @media (max-width: 860px) {
-  .doc-layout {
+  .doc-layout,
+  .tutorial-layout {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -1250,9 +1251,17 @@ h3:hover .heading-anchor,
 }
 
 .tutorial-layout {
-  max-width: 80rem;
+  max-width: 90rem;
   margin: 0 auto;
-  padding: 2rem 1rem 0;
+  display: grid;
+  grid-template-columns: 16rem minmax(0, 1fr);
+  gap: 2rem;
+  padding: 0 1rem;
+}
+
+.tutorial-main {
+  padding: 1.5rem 0 3rem;
+  min-width: 0;
 }
 
 .tutorial-head h1 {
@@ -1261,8 +1270,209 @@ h3:hover .heading-anchor,
   letter-spacing: -0.01em;
 }
 
-.tutorial-head .section-sub {
+.ch-kicker {
+  margin: 0 0 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent-strong);
+}
+
+.ch-intro {
+  color: var(--muted);
   max-width: 56rem;
+  margin: 0 0 0.5rem;
+}
+
+.ch-docs {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0 0 1.25rem;
+}
+
+/* chapter rail marks */
+
+.ch-mark {
+  display: inline-block;
+  width: 1.1rem;
+  color: #3fb950;
+  font-weight: 700;
+}
+
+.ch-mark.is-done::before {
+  content: '✓';
+}
+
+.ch-mark.is-assisted::before {
+  content: '✓';
+  color: var(--accent);
+}
+
+.rail-foot {
+  margin-top: 1.5rem;
+  padding: 0.75rem 0.75rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.rail-legend {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin: 0 0 0.5rem;
+}
+
+.rail-reset {
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.rail-reset:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* ide chrome extras */
+
+.ide-reset {
+  margin-left: auto;
+  border: 1px solid #44403c;
+  background: #2a2724;
+  color: #d4d4d4;
+  border-radius: 6px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.ide-reset:hover {
+  border-color: var(--accent);
+}
+
+.term-cmd {
+  display: inline-flex;
+  align-items: baseline;
+  flex: 1;
+  min-width: 0;
+  margin-left: 0.75rem;
+  gap: 0;
+}
+
+.argv-input {
+  flex: 1;
+  min-width: 4rem;
+  margin-left: 0.4rem;
+  border: none;
+  border-bottom: 1px dashed #44403c;
+  background: transparent;
+  color: #d4d4d4;
+  font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  padding: 0 0.2rem;
+}
+
+.argv-input:focus-visible {
+  outline: none;
+  border-bottom-color: var(--accent);
+}
+
+/* assist bar */
+
+.assist-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.5rem;
+  margin-top: 0.9rem;
+}
+
+.assist-goal {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.assist-progress {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* resume modal */
+
+.resume-modal {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-raised);
+  color: var(--text);
+  padding: 1.5rem;
+  max-width: 26rem;
+  box-shadow: var(--shadow);
+}
+
+.resume-modal::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+
+.resume-modal h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+}
+
+.resume-modal p {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+}
+
+.resume-note {
+  color: var(--accent-strong) !important;
+  font-size: 0.9rem;
+}
+
+.resume-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+/* no-JS fallback */
+
+.tutorial-fallback {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.tutorial-fallback h2 {
+  font-size: 1.3rem;
+  margin: 0 0 0.5rem;
+}
+
+.tutorial-fallback > p {
+  color: var(--muted);
+  max-width: 56rem;
+}
+
+.tutorial-fallback .ex-files {
+  margin: 1rem 0;
+}
+
+.tutorial-fallback .mini-window.term {
+  margin-bottom: 1rem;
+}
+
+.tutorial-fallback details {
+  margin-bottom: 1rem;
+}
+
+.tutorial-fallback summary {
+  cursor: pointer;
+  color: var(--link);
+  margin-bottom: 0.5rem;
 }
 
 /* the large IDE: hero .ide-mock visuals, sized as the page's centerpiece */
