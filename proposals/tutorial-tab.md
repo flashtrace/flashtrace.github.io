@@ -58,7 +58,6 @@ time, so nothing internal derives from it:
 - A free-form multi-file playground (the two-pane layout is fixed per chapter;
   a "Playground" could later reuse the same runner).
 - Additional code-pane languages (the data model is ready; content lands later).
-- Syntax highlighting while typing (progressive enhancement, see milestone M4).
 - Server-side anything.
 
 ## Entry point and layout
@@ -384,11 +383,16 @@ Every chapter ends with a "read more" link into the corresponding docs page.
 
 ## Implementation plan
 
-All vanilla, no new dependencies. Four milestones, one branch/PR each, in line
-with the repo's one-change-per-branch rule. Every milestone ends with `pnpm build`
-green (with the `flashtrace/` clone present) before committing.
+All vanilla, no new dependencies. Delivery is a **single branch and a single PR**
+(Decided): `feat/tutorial-tab`, introducing the feature as one coherent change.
+The four stages below structure the work *within* that branch — each stage is a
+group of conventional commits landed in order, and the branch is buildable
+(`pnpm build` green, with the `flashtrace/` clone present) at every commit, per
+the repo's small-chunks/regular-commits rule. This deliberately trades the
+one-change-per-branch guideline for a reviewable, self-contained feature
+introduction.
 
-### M1 — `feat/tutorial-runner`: in-browser CLI pipeline + bare page
+### Stage 1 — runner: in-browser CLI pipeline + bare page
 
 | File | Work |
 |---|---|
@@ -402,7 +406,7 @@ green (with the `flashtrace/` clone present) before committing.
 | `src/layout.mjs` | CTA button in `.topbar-actions` before the GitHub icon: compact `btn-primary`, `aria-current` when on `/try/`. |
 | `src/styles/site.css` | `.ide-lg` grid (panes row + terminal), editor textareas styled like `.code` panes, CTA sizing, responsive stack. |
 
-### M2 — `feat/tutorial-chapters`: chapter engine + persistence
+### Stage 2 — chapters: chapter engine + persistence
 
 | File | Work |
 |---|---|
@@ -411,7 +415,7 @@ green (with the `flashtrace/` clone present) before committing.
 | `src/tutorial.mjs` | Chapter rail reusing the docs `sidebar()` + mobile drawer pattern; chapters + hashes embedded as `<script type="application/json">`; no-JS fallback renders each chapter read-only with `highlightTokens` + the shared colorizer (landing-example fidelity). |
 | `src/scripts/tutorial.js` | Chapter switching; current step = first failing check, recomputed after every edit/run; `ft-tutorial-progress` (write-once on first passing run, defensive `try/catch` as in `site.js`); `ft-tutorial-buffers` (debounced save, cleared on completion); resume/start-fresh modal (focus-trapped) with "chapter updated since" note on `rev` mismatch; rail check marks incl. distinct assisted mark; "reset progress" control. |
 
-### M3 — `feat/tutorial-assists`: Help me / Do the next step for me
+### Stage 3 — assists: Help me / Do the next step for me
 
 `src/scripts/tutorial.js` + CSS: spotlight overlay dimming the IDE; popup callout
 absolutely positioned inside the IDE, anchored via hidden mirror-`<pre>` line
@@ -421,25 +425,25 @@ increments `assists.help`. "Do the next step for me" = same, then typewriter-app
 the patch via `setRangeText` (undo history intact) and auto-runs; instant apply
 under `prefers-reduced-motion`; increments `assists.auto`.
 
-### M4 — `feat/tutorial-polish`
+### Stage 4 — polish
 
 Editor highlight overlay (transparent textarea over a `highlightTokens`-rendered
 `<pre>`, scroll-synced); mobile layout (stacked panes, collapsible rail); a11y
 pass (`aria-live="polite"` terminal, keyboard flow, modal focus trap, roving
 tabindex reusing the `[data-tabs]` pattern from `site.js`).
 
-### Verification per milestone
+### Verification per stage (all pass before the PR opens)
 
-- **M1**: `pnpm dev`, open `/try/`, paste the landing "uncovered defect" example →
-  byte-identical report to Appendix A with `exit 1`; fix it → `ok`, `exit 0`.
-  Headless check possible with the environment's Playwright/Chromium against the
-  dev server (local tooling only, not a committed dependency).
-- **M2**: complete chapter 1 → progress entry carries title/rev/lang and
+- **Stage 1**: `pnpm dev`, open `/try/`, paste the landing "uncovered defect"
+  example → byte-identical report to Appendix A with `exit 1`; fix it → `ok`,
+  `exit 0`. Headless check possible with Playwright/Chromium against the dev
+  server (local tooling only, not a committed dependency).
+- **Stage 2**: complete chapter 1 → progress entry carries title/rev/lang and
   `assists {0,0}`; edit chapter 2 and reload → resume modal appears, *Start
   fresh* restores the seed; temporarily reordering chapters auto-checks nothing;
   corrupting the stored JSON degrades to "no progress" without breaking the page;
   JS disabled → all chapters render read-only with captured outputs.
-- **M3**: assist buttons resolve the correct next step from arbitrary buffer
+- **Stage 3**: assist buttons resolve the correct next step from arbitrary buffer
   states (type-ahead, pasted solution, re-broken earlier step); reduced-motion
   applies instantly; counters land in the progress map.
 - **Always**: build-time chapter verification doubles as the content regression
@@ -477,6 +481,10 @@ tabindex reusing the `[data-tabs]` pattern from `site.js`).
    are additive.
 5. ~~Buffer persistence~~ → **yes**, per chapter in `ft-tutorial-buffers`, with a
    resume-or-start-fresh **modal** when returning to a chapter in progress.
+6. ~~Delivery~~ → the whole feature lands as **one PR** from a single
+   `feat/tutorial-tab` branch (maintainer's explicit call, overriding the
+   one-change-per-branch guideline); the four stages structure the commit
+   history within that branch.
 
 ---
 
