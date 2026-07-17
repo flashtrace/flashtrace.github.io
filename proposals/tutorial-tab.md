@@ -1,7 +1,8 @@
 # Proposal: an interactive tutorial tab ("Try it")
 
-Status: **proposal, revision 2** — decisions from maintainer review are folded in
-and marked *Decided*; the v1 chapter selection is still open.
+Status: **proposal, revision 3** — all maintainer decisions are folded in and
+marked *Decided*, including the v1 chapter scope (all 11 chapters). Contains the
+full implementation plan; ready to execute.
 Author: prepared with Claude Code, July 2026.
 
 ## Summary
@@ -347,11 +348,11 @@ modal says so ("this chapter has been updated since") — resuming is still
 offered, since buffers are just text. Completing a chapter clears its buffer
 entry; buffers of completed chapters are not retained.
 
-## Chapters — candidate curriculum (selection pending)
+## Chapters (Decided: all 11 ship in v1)
 
 All chapters use the continuous login/auth story the hero and landing examples
-already tell. Candidates, grouped; the v1 set is being selected by the
-maintainer:
+already tell. Curriculum order = the numbering below (foundations → features →
+extras); ids are stable forever:
 
 **Foundations**
 
@@ -383,32 +384,66 @@ Every chapter ends with a "read more" link into the corresponding docs page.
 
 ## Implementation plan
 
-New/changed files (all vanilla, no new dependencies):
+All vanilla, no new dependencies. Four milestones, one branch/PR each, in line
+with the repo's one-change-per-branch rule. Every milestone ends with `pnpm build`
+green (with the `flashtrace/` clone present) before committing.
 
-| File | Purpose |
+### M1 — `feat/tutorial-runner`: in-browser CLI pipeline + bare page
+
+| File | Work |
 |---|---|
-| `src/tutorial.mjs` | Page renderer (shell, chapter rail, IDE skeleton, no-JS fallback content) |
-| `src/tutorial/chapters.mjs` | Chapter/step data with language variants + done-conditions (build-time verified, embedded into the page as JSON together with the computed identity hashes) |
-| `src/tutorial/shims/{fs,path,process,url,child_process}.mjs` | Browser shims, copied into `dist/try/shims/` |
-| `src/scripts/tutorial.js` | Tab UI: editors, run orchestration, assists, progress map, buffer persistence + resume modal |
-| `src/scripts/tutorial-worker.js` | Worker bootstrap: seed vfs, import bundle, capture output, post results |
-| `build.mjs` | Emit `/try/`, rewrite+copy the bundle, compute chapter hashes, run chapter verification, extend sitemap |
-| `src/layout.mjs` | CTA button in the top bar's action group |
-| `src/styles/site.css` | Large-IDE layout, editor/terminal, spotlight/popup, modal, chapter rail states |
+| `src/tutorial/shims/{fs,process,child_process,url}.mjs` | Port from the PoC (Appendix A). |
+| `src/tutorial/shims/path.mjs` | Posix-only `join/resolve/extname/relative/dirname/sep` (~50 lines); `resolve` anchors at `/project`. |
+| `src/scripts/tutorial-worker.js` | Module worker: receive `{files, argv}`; seed `globalThis.__ftVfs` (`/project/<name>` → text) and `__ftArgv` (`['node', <bundle pathname>, '/project', ...args]`); hook `console.log/error`; dynamic-import the rewritten bundle; treat `ExitSignal` correctly (the CLI's catch handler rethrows a second one — filter both from output, first signal wins as exit code); additionally call the exported `parseMarkdown`/`parseCode`/`analyze` on the same vfs; post `{output, exitCode, items, problems}`. |
+| `src/scripts/tutorial.js` | v1 page script: two textareas, Run button + Ctrl/Cmd+Enter, fresh `Worker(..., {type:'module'})` per run, 5 s watchdog terminate, colorized output + `exit N`. |
+| `src/tutorial.mjs` | `renderTutorial({version})`: `pageShell` with `bodyClass:'page-tutorial'`; large IDE skeleton reusing the hero's chrome/pane/terminal classes under a new `.ide-lg` sizing. |
+| `src/report-colors.mjs` | Extract `colorizeReport` out of `src/examples.mjs` so the build *and* the browser share it (it is dependency-free string replacement); copied into `dist/` for the client. |
+| `build.mjs` | Locate `path.join(docsDir, '..', 'dist', 'flashtrace.mjs')` (CI checks out the full tool repo; fail loudly if absent); rewrite `from "node:(fs\|path\|process\|url\|child_process)"` → `./shims/$1.mjs` — each built-in appears several times, so **assert the set of `node:*` specifiers equals exactly {fs, path, process, url, child_process}**, failing the build on any unknown one; emit `dist/try/` (page, bundle, shims); extend the sitemap with `/try/`. |
+| `src/layout.mjs` | CTA button in `.topbar-actions` before the GitHub icon: compact `btn-primary`, `aria-current` when on `/try/`. |
+| `src/styles/site.css` | `.ide-lg` grid (panes row + terminal), editor textareas styled like `.code` panes, CTA sizing, responsive stack. |
 
-Milestones — one branch/PR each, in line with the repo's one-change-per-branch rule:
+### M2 — `feat/tutorial-chapters`: chapter engine + persistence
 
-- **M1 — runner**: build-time bundle rewrite + shims + worker + a bare page with
-  two editors and a Run button. Proves the pipeline on the live site.
-- **M2 — chapters + persistence**: chapter data model with variants and identity
-  hashes, rail, done-conditions, progress map with assist flags, buffer
-  persistence with the resume/start-fresh modal, build-time chapter
-  verification, no-JS fallback.
-- **M3 — assists**: spotlight, popups, "Help me", "Do the next step for me",
-  typewriter, reduced-motion handling, assist counters feeding the progress map.
-- **M4 — polish**: editor highlight overlay, mobile layout (stacked panes,
-  collapsible rail), a11y pass (aria-live terminal output, keyboard flow,
-  modal focus trap).
+| File | Work |
+|---|---|
+| `src/tutorial/chapters.mjs` | All 11 chapter definitions per the data model above; `check`/`done` are pure functions over `{items, problems, clean, exitCode}`. |
+| `build.mjs` | Compute each chapter's `rev` (sha256-12 via `node:crypto` over canonical JSON, functions serialized by source); **build-time verification**: run every chapter's start state and each step's cumulative patched state through the real CLI and assert the expected defect/clean outcomes, `done` passing after the last step — fail the build otherwise; embed captured outputs as the no-JS fallback. |
+| `src/tutorial.mjs` | Chapter rail reusing the docs `sidebar()` + mobile drawer pattern; chapters + hashes embedded as `<script type="application/json">`; no-JS fallback renders each chapter read-only with `highlightTokens` + the shared colorizer (landing-example fidelity). |
+| `src/scripts/tutorial.js` | Chapter switching; current step = first failing check, recomputed after every edit/run; `ft-tutorial-progress` (write-once on first passing run, defensive `try/catch` as in `site.js`); `ft-tutorial-buffers` (debounced save, cleared on completion); resume/start-fresh modal (focus-trapped) with "chapter updated since" note on `rev` mismatch; rail check marks incl. distinct assisted mark; "reset progress" control. |
+
+### M3 — `feat/tutorial-assists`: Help me / Do the next step for me
+
+`src/scripts/tutorial.js` + CSS: spotlight overlay dimming the IDE; popup callout
+absolutely positioned inside the IDE, anchored via hidden mirror-`<pre>` line
+measurement (pane-level fallback below a width threshold); dismiss ✕/Esc/backdrop
+with focus restore. "Help me" = highlight + popup (`explain` + docs link),
+increments `assists.help`. "Do the next step for me" = same, then typewriter-applies
+the patch via `setRangeText` (undo history intact) and auto-runs; instant apply
+under `prefers-reduced-motion`; increments `assists.auto`.
+
+### M4 — `feat/tutorial-polish`
+
+Editor highlight overlay (transparent textarea over a `highlightTokens`-rendered
+`<pre>`, scroll-synced); mobile layout (stacked panes, collapsible rail); a11y
+pass (`aria-live="polite"` terminal, keyboard flow, modal focus trap, roving
+tabindex reusing the `[data-tabs]` pattern from `site.js`).
+
+### Verification per milestone
+
+- **M1**: `pnpm dev`, open `/try/`, paste the landing "uncovered defect" example →
+  byte-identical report to Appendix A with `exit 1`; fix it → `ok`, `exit 0`.
+  Headless check possible with the environment's Playwright/Chromium against the
+  dev server (local tooling only, not a committed dependency).
+- **M2**: complete chapter 1 → progress entry carries title/rev/lang and
+  `assists {0,0}`; edit chapter 2 and reload → resume modal appears, *Start
+  fresh* restores the seed; temporarily reordering chapters auto-checks nothing;
+  corrupting the stored JSON degrades to "no progress" without breaking the page;
+  JS disabled → all chapters render read-only with captured outputs.
+- **M3**: assist buttons resolve the correct next step from arbitrary buffer
+  states (type-ahead, pasted solution, re-broken earlier step); reduced-motion
+  applies instantly; counters land in the progress map.
+- **Always**: build-time chapter verification doubles as the content regression
+  test on every deploy, including release-triggered ones.
 
 ## Risks & mitigations
 
@@ -435,7 +470,8 @@ Milestones — one branch/PR each, in line with the repo's one-change-per-branch
 2. ~~Assisted completions~~ → **flagged**, with per-chapter `help`/`auto`
    counters; progress entries carry detailed data including title and a
    content-hash chapter identity (`rev`).
-3. **v1 chapter scope** → open, selection from the candidate curriculum above.
+3. ~~v1 chapter scope~~ → **all 11 chapters** from the curriculum above ship in
+   v1, in the listed order (foundations 1–4, features 5–8, extras 9–11).
 4. ~~Languages~~ → Markdown spec + **JavaScript** code in v1; all
    language-specific content lives in per-chapter `variants` so more languages
    are additive.
