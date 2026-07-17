@@ -12,6 +12,8 @@ import { renderLanding } from './src/landing.mjs';
 import { renderImpressum } from './src/impressum.mjs';
 import { renderLicense } from './src/license.mjs';
 import { renderTutorial } from './src/tutorial.mjs';
+import { chapters } from './src/tutorial/chapters.mjs';
+import { verifyChapters } from './src/tutorial/verify.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.join(root, 'dist');
@@ -231,12 +233,24 @@ for (const page of pages) {
 
 const tryDir = path.join(dist, 'try');
 mkdirSync(tryDir, { recursive: true });
-writeFileSync(path.join(tryDir, 'index.html'), renderTutorial({ version }));
 writeFileSync(path.join(tryDir, 'flashtrace.mjs'), rewriteBundle(readFileSync(bundlePath, 'utf8')));
 cpSync(path.join(root, 'src', 'tutorial', 'shims'), path.join(tryDir, 'shims'), { recursive: true });
+cpSync(path.join(root, 'src', 'tutorial', 'chapter-utils.mjs'), path.join(tryDir, 'chapter-utils.mjs'));
 cpSync(path.join(root, 'src', 'scripts', 'tutorial.js'), path.join(tryDir, 'tutorial.js'));
 cpSync(path.join(root, 'src', 'scripts', 'tutorial-worker.js'), path.join(tryDir, 'tutorial-worker.js'));
 cpSync(path.join(root, 'src', 'report-colors.mjs'), path.join(tryDir, 'report-colors.mjs'));
+
+// Every chapter's start state and each step's cumulative patched state runs
+// through the exact bundle the browser executes; behavioral drift in a
+// flashtrace release fails the deploy here instead of shipping a broken lesson.
+let verified;
+try {
+  verified = await verifyChapters(chapters, path.join(tryDir, 'flashtrace.mjs'), 'js');
+} catch (err) {
+  console.error(`error: tutorial chapter verification failed.\n${err.message}`);
+  process.exit(1);
+}
+writeFileSync(path.join(tryDir, 'index.html'), renderTutorial({ version, verified }));
 
 const sitePaths = [
   '/',

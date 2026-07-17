@@ -7,6 +7,7 @@
 // result message out. The page spawns a fresh worker per run (fresh module
 // graph, no state leaks) and terminates it afterwards.
 
+import { analyzeBuffers } from './chapter-utils.mjs';
 import processShim from './shims/process.mjs';
 
 // The bundle references the `process` global directly in one place (esbuild
@@ -53,76 +54,6 @@ self.addEventListener('unhandledrejection', (event) => {
     recordExit(event.reason);
   }
 });
-
-// Mirrors the CLI's -t/--tags parsing closely enough for the structured
-// analysis to match what the run just reported.
-function parseTags(argv) {
-  let tags = null;
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    let value = null;
-    if (arg === '-t' || arg === '--tags') value = argv[i + 1];
-    else if (arg.startsWith('--tags=')) value = arg.slice('--tags='.length);
-    if (value != null) {
-      tags = value
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-    }
-  }
-  return tags;
-}
-
-// Re-run the parse/analyze pipeline through the bundle's public exports to get
-// items and problems as data. Chapter checks assert on these instead of
-// regex-matching terminal text.
-function analyzeBuffers(mod, files, argv) {
-  const problems = [];
-  const forwards = [];
-  let items = [];
-  for (const name of Object.keys(files).sort()) {
-    const file = '/project/' + name;
-    const isMarkdown = /\.(md|markdown)$/i.test(name);
-    const parse = isMarkdown ? mod.parseMarkdown : mod.parseCode;
-    items.push(...parse(file, files[name], problems, forwards));
-  }
-  const tags = parseTags(argv);
-  if (tags) {
-    const wantUntagged = tags.includes('_');
-    items = items.filter(
-      (item) =>
-        item.origin === 'code' ||
-        item.tags.some((tag) => tags.includes(tag)) ||
-        (wantUntagged && item.tags.length === 0),
-    );
-  }
-  mod.analyze(items, forwards, problems);
-  const errorCount = problems.filter((p) => p.severity === 'error').length;
-  const clean = errorCount === 0 && items.every((item) => item.defects.length === 0);
-  const stripRoot = (file) => String(file).replace('/project/', '');
-  return {
-    clean,
-    items: items.map((item) => ({
-      id: item.id,
-      origin: item.origin,
-      file: stripRoot(item.file),
-      line: item.line,
-      title: item.title ?? null,
-      tags: item.tags,
-      needs: item.needs,
-      covers: item.covers,
-      defects: item.defects,
-      deepCovered: Boolean(item.deepCovered),
-      forwardsTo: item.forwardsTo ?? null,
-    })),
-    problems: problems.map((p) => ({
-      severity: p.severity,
-      file: stripRoot(p.file),
-      line: p.line,
-      message: p.message,
-    })),
-  };
-}
 
 self.onmessage = async (event) => {
   const { files, argv = [] } = event.data;
