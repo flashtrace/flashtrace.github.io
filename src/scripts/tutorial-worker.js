@@ -7,6 +7,13 @@
 // result message out. The page spawns a fresh worker per run (fresh module
 // graph, no state leaks) and terminates it afterwards.
 
+import processShim from './shims/process.mjs';
+
+// The bundle references the `process` global directly in one place (esbuild
+// keeps globals as-is); Node provides it, a worker does not - seed it with
+// the same shim the rewritten `node:process` imports resolve to.
+globalThis.process = processShim;
+
 const BUNDLE_URL = new URL('./flashtrace.mjs', import.meta.url);
 
 const output = [];
