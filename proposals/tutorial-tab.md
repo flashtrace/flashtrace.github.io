@@ -1,8 +1,8 @@
 # Proposal: an interactive tutorial tab ("Try it")
 
-Status: **proposal, revision 3** — all maintainer decisions are folded in and
+Status: **accepted** (revision 3) — all maintainer decisions are folded in and
 marked *Decided*, including the v1 chapter scope (all 11 chapters). Contains the
-full implementation plan; ready to execute.
+full implementation plan; being executed on `feat/tutorial-tab`.
 Author: prepared with Claude Code, July 2026.
 
 ## Summary
