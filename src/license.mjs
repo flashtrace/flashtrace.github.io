@@ -35,12 +35,22 @@ ${col('Conditions', 'lic-info', infoIcon, ['License and copyright notice', 'Stat
 </section>`;
 }
 
+// Apache 2.0 starts with "Apache License" / "Version 2.0, January 2004" as
+// its first two non-blank lines. Checking only the header (not the whole
+// text) avoids a false match on a future license that merely mentions it.
+function isApache2(text) {
+  const [l1 = '', l2 = ''] = text
+    .split(/\r?\n/, 20)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  return l1 === 'Apache License' && l2.startsWith('Version 2.0');
+}
+
 export function renderLicense({ version, text }) {
-  const isApache2 = text.includes('Apache License') && text.includes('Version 2.0');
   const body = `<main class="section" id="main">
 <div class="doc-content legal license-doc">
 <h1>License</h1>
-${isApache2 ? `${apacheSummaryPanel()}\n<p class="license-divider" aria-hidden="true">Full license text</p>` : ''}
+${isApache2(text) ? `${apacheSummaryPanel()}\n<p class="license-divider" aria-hidden="true">Full license text</p>` : ''}
 <pre>${esc(text)}</pre>
 </div>
 </main>`;
