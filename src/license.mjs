@@ -40,7 +40,7 @@ export function renderLicense({ version, text }) {
   const body = `<main class="section" id="main">
 <div class="doc-content legal license-doc">
 <h1>License</h1>
-${isApache2 ? apacheSummaryPanel() : ''}
+${isApache2 ? `${apacheSummaryPanel()}\n<p class="license-divider" aria-hidden="true">Full license text</p>` : ''}
 <pre>${esc(text)}</pre>
 </div>
 </main>`;
