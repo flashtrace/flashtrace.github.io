@@ -1402,6 +1402,87 @@ h3:hover .heading-anchor,
   font-size: 0.9rem;
 }
 
+/* assist spotlight + popup (inside the IDE, which clips the dim shadow) */
+
+.ide-lg {
+  position: relative;
+}
+
+.spotlight {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+}
+
+.spotlight-hole {
+  position: absolute;
+  border-radius: 5px;
+  box-shadow: 0 0 0 9999px rgb(0 0 0 / 0.55);
+  outline: 1px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  pointer-events: none;
+}
+
+.assist-pop {
+  position: absolute;
+  z-index: 6;
+  max-width: 22rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: #26221f;
+  color: #e7e5e4;
+  box-shadow: var(--shadow);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.assist-pop:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+.assist-text {
+  margin: 0 1.25rem 0.5rem 0;
+}
+
+.assist-doc-link {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.assist-doc-link a {
+  /* the popup sits in the always-dark IDE - fix the accent to the dark value */
+  color: #f9c21d;
+}
+
+.assist-close {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  border: none;
+  background: transparent;
+  color: #a8a29e;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+}
+
+.assist-close:hover {
+  color: #e7e5e4;
+  background: rgb(255 255 255 / 0.08);
+}
+
+.assist-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-left: auto;
+}
+
+.assist-actions .btn {
+  padding: 0.35rem 0.9rem;
+  font-size: 0.85rem;
+}
+
 /* resume modal */
 
 .resume-modal {

@@ -4,6 +4,7 @@
 // and in-flight buffers persist in localStorage (ft-tutorial-*), keyed by
 // stable chapter ids - never by index. Loaded as a module; browsers without
 // module support keep the server-rendered read-only fallback.
+import { applyStep } from './chapter-utils.mjs';
 import { colorizeReport, esc } from './report-colors.mjs';
 
 const ide = document.getElementById('ide');
@@ -61,6 +62,7 @@ function loadChapterData() {
     for (const chapter of data.chapters) {
       chapter.done = compile(chapter.done);
       for (const step of chapter.steps) step.check = compile(step.check);
+      chapter.variants = { [data.lang]: chapter.variant }; // applyStep's shape
     }
     return data;
   } catch (err) {
@@ -202,6 +204,10 @@ function openChapter(id) {
   setText('goal-text', chapter.goal);
   setText('step-progress', 'Run to check your progress.');
   terminal.innerHTML = '<span class="t-dim">press Run to trace the project</span>';
+  closeAssist();
+  for (const btn of [document.getElementById('help-btn'), document.getElementById('auto-btn')]) {
+    if (btn) btn.disabled = true; // re-enabled once the first analysis lands
+  }
 
   // buffers: stored work-in-progress -> resume/start-fresh modal
   const stored = loadStore(BUFFERS_KEY).chapters[id];
@@ -333,17 +339,24 @@ function safeCheck(fn, r) {
   }
 }
 
+// current step = index of the first failing check; users may type ahead,
+// paste solutions or re-break earlier steps - this always re-converges
+function firstFailingIndex() {
+  if (!current || !lastResult || !lastResult.items) return null;
+  for (let i = 0; i < current.steps.length; i++) {
+    if (!safeCheck(current.steps[i].check, lastResult)) return i;
+  }
+  return current.steps.length;
+}
+
 function updateStepUi(fromRealRun) {
   if (!current || !lastResult || !lastResult.items) return;
   const steps = current.steps;
-  let firstFailing = steps.length;
-  for (let i = 0; i < steps.length; i++) {
-    if (!safeCheck(steps[i].check, lastResult)) {
-      firstFailing = i;
-      break;
-    }
-  }
+  const firstFailing = firstFailingIndex();
   const solved = safeCheck(current.done, lastResult);
+  for (const btn of [document.getElementById('help-btn'), document.getElementById('auto-btn')]) {
+    if (btn) btn.disabled = false;
+  }
   const completed = Boolean(progressEntry(current.id));
   if (solved && (completed || fromRealRun)) {
     const next = data.chapters[currentIndex + 1];
@@ -388,6 +401,7 @@ function scheduleSilentRun() {
 }
 
 function run(silent) {
+  if (typing) return; // never run against a half-typed patch
   if (active) {
     if (silent) return; // a real Run preempts a background check, not vice versa
     if (active.silent) finishRun();
@@ -450,4 +464,227 @@ function run(silent) {
   worker.postMessage({ files, argv });
 }
 
-if (ide && specEditor && codeEditor && terminal && runButton) init();
+// --- assists: "Help me" / "Do the next step for me" --------------------------
+//
+// Both operate on the current step. Help spotlights the step's anchor inside
+// the IDE and explains it in a popup; auto additionally typewrites the step's
+// patch into the editor (setRangeText, so undo works) and runs.
+
+let typing = false; // typewriter in flight - runs and assists wait
+let assistRestoreFocus = null;
+
+function initAssists() {
+  const helpButton = document.getElementById('help-btn');
+  const autoButton = document.getElementById('auto-btn');
+  const closeButton = document.getElementById('assist-close');
+  const spotlight = document.getElementById('spotlight');
+  if (!helpButton || !autoButton || !closeButton || !spotlight) return;
+  helpButton.addEventListener('click', helpAssist);
+  autoButton.addEventListener('click', autoAssist);
+  closeButton.addEventListener('click', closeAssist);
+  spotlight.addEventListener('click', closeAssist);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeAssist();
+  });
+}
+
+function paneEditor(pane) {
+  return pane === 'spec' ? specEditor : codeEditor;
+}
+
+function rectInIde(el) {
+  const a = el.getBoundingClientRect();
+  const b = ide.getBoundingClientRect();
+  return { left: a.left - b.left, top: a.top - b.top, width: a.width, height: a.height };
+}
+
+// The editors render pre-wrap-free monospace text, so a line's y-offset is
+// plain arithmetic over the computed line height - no mirror element needed.
+function lineRectInIde(editor, lineIndex) {
+  const style = getComputedStyle(editor);
+  const lineHeight = parseFloat(style.lineHeight);
+  const padTop = parseFloat(style.paddingTop);
+  editor.scrollTop = Math.max(0, padTop + lineIndex * lineHeight - editor.clientHeight / 2);
+  const base = rectInIde(editor);
+  let top = base.top + padTop + lineIndex * lineHeight - editor.scrollTop;
+  top = Math.min(Math.max(top, base.top + 4), base.top + base.height - lineHeight - 4);
+  return { left: base.left + 6, top: top - 2, width: base.width - 12, height: lineHeight + 4 };
+}
+
+// Resolve the step's visual target inside the IDE. Narrow layouts (stacked
+// panes) degrade to the pane tab instead of a single line.
+function assistTarget(step) {
+  if (!step) {
+    const runRect = rectInIde(runButton);
+    return { rect: runRect };
+  }
+  if (step.pane === 'argv') {
+    return { rect: rectInIde(argvInput || runButton) };
+  }
+  const editor = paneEditor(step.pane);
+  const tab = document.getElementById(step.pane === 'spec' ? 'spec-tab' : 'code-tab');
+  if (window.innerWidth < 700) return { rect: rectInIde(tab || editor) };
+  const pack = step.pane === 'spec' ? current.spec : current.variant;
+  const anchorKey = (step.patch && step.patch.anchor) || step.anchor;
+  const source = anchorKey ? pack.anchors[anchorKey] : null;
+  const text = editor.value;
+  if (source) {
+    const match = new RegExp(source, 'm').exec(text);
+    if (match) {
+      const line = text.slice(0, match.index).split('\n').length - 1;
+      return { rect: lineRectInIde(editor, line), editor };
+    }
+  }
+  // append steps (or unmatched anchors): point at the last line of the pane
+  return { rect: lineRectInIde(editor, text.split('\n').length - 1), editor };
+}
+
+function openAssist(step) {
+  const spotlight = document.getElementById('spotlight');
+  const hole = document.getElementById('spotlight-hole');
+  const pop = document.getElementById('assist-pop');
+  const text = document.getElementById('assist-text');
+  const doc = document.getElementById('assist-doc');
+  if (!spotlight || !hole || !pop || !text || !doc || !current) return;
+
+  const solvedNotRun = firstFailingIndex() >= current.steps.length;
+  text.textContent = step
+    ? step.explain
+    : solvedNotRun && !progressEntry(current.id)
+      ? 'Everything checks out - press Run to finish the chapter.'
+      : 'This chapter is complete. Pick the next one in the rail on the left.';
+  const docRef = current.docs[0];
+  doc.href = docRef.href;
+  doc.textContent = 'Read more: ' + docRef.label;
+
+  const { rect } = assistTarget(step);
+  hole.style.left = rect.left + 'px';
+  hole.style.top = rect.top + 'px';
+  hole.style.width = rect.width + 'px';
+  hole.style.height = rect.height + 'px';
+  spotlight.hidden = false;
+
+  // measure invisibly, then place below the target (above when out of space)
+  pop.hidden = false;
+  pop.style.visibility = 'hidden';
+  const ideBox = ide.getBoundingClientRect();
+  const popBox = pop.getBoundingClientRect();
+  let top = rect.top + rect.height + 10;
+  if (top + popBox.height > ideBox.height - 8) top = Math.max(8, rect.top - popBox.height - 10);
+  const left = Math.min(Math.max(rect.left, 8), Math.max(8, ideBox.width - popBox.width - 8));
+  pop.style.top = top + 'px';
+  pop.style.left = left + 'px';
+  pop.style.visibility = '';
+
+  assistRestoreFocus = document.activeElement;
+  pop.focus();
+}
+
+function closeAssist() {
+  const spotlight = document.getElementById('spotlight');
+  const pop = document.getElementById('assist-pop');
+  if (!spotlight || !pop || pop.hidden) return;
+  spotlight.hidden = true;
+  pop.hidden = true;
+  if (assistRestoreFocus && typeof assistRestoreFocus.focus === 'function') assistRestoreFocus.focus();
+  assistRestoreFocus = null;
+}
+
+function currentStep() {
+  const index = firstFailingIndex();
+  if (index === null || index >= current.steps.length) return null;
+  return current.steps[index];
+}
+
+function helpAssist() {
+  if (!current || typing) return;
+  const step = currentStep();
+  if (step) assists.help += 1;
+  openAssist(step);
+}
+
+// shortest edit between the buffer and the patched buffer - typed as one span
+function diffRange(oldText, newText) {
+  let prefix = 0;
+  while (prefix < oldText.length && prefix < newText.length && oldText[prefix] === newText[prefix]) prefix++;
+  let oldEnd = oldText.length;
+  let newEnd = newText.length;
+  while (oldEnd > prefix && newEnd > prefix && oldText[oldEnd - 1] === newText[newEnd - 1]) {
+    oldEnd--;
+    newEnd--;
+  }
+  return { start: prefix, oldEnd, insert: newText.slice(prefix, newEnd) };
+}
+
+function typewriter(editor, start, oldEnd, insert, onDone) {
+  editor.focus();
+  editor.setRangeText('', start, oldEnd, 'end'); // drop the replaced region
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced || insert.length === 0) {
+    editor.setRangeText(insert, start, start, 'end');
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
+    onDone();
+    return;
+  }
+  typing = true;
+  const chunk = Math.max(1, Math.ceil(insert.length / 60));
+  let done = 0;
+  let pos = start;
+  const timer = setInterval(() => {
+    const piece = insert.slice(done, done + chunk);
+    editor.setRangeText(piece, pos, pos, 'end');
+    pos += piece.length;
+    done += chunk;
+    if (done >= insert.length) {
+      clearInterval(timer);
+      typing = false;
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
+      onDone();
+    }
+  }, 18);
+}
+
+function autoAssist() {
+  if (!current || typing) return;
+  const index = firstFailingIndex();
+  if (index === null) return;
+  if (index >= current.steps.length) {
+    run(false); // nothing left to apply - finish with a real run
+    return;
+  }
+  const step = current.steps[index];
+  const before = { spec: specEditor.value, code: codeEditor.value, argv: currentArgv() };
+  const after = applyStep(current, data.lang, step, before);
+  if (after.failed) {
+    openAssist(step);
+    const text = document.getElementById('assist-text');
+    if (text) {
+      text.textContent =
+        'The buffers have drifted too far from this step\'s anchor to apply it automatically. ' +
+        'Use "Reset files" to return to the chapter\'s start state, or follow the hint by hand: ' +
+        step.explain;
+    }
+    return;
+  }
+  assists.auto += 1;
+  openAssist(step);
+  const finish = () => {
+    closeAssist();
+    run(false);
+  };
+  window.setTimeout(() => {
+    if (step.pane === 'argv') {
+      if (argvInput) argvInput.value = after.argv.join(' ');
+      finish();
+      return;
+    }
+    const editor = paneEditor(step.pane);
+    const edit = diffRange(before[step.pane], after[step.pane]);
+    typewriter(editor, edit.start, edit.oldEnd, edit.insert, finish);
+  }, 600);
+}
+
+if (ide && specEditor && codeEditor && terminal && runButton) {
+  init();
+  initAssists();
+}
