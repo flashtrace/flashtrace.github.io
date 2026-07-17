@@ -17,8 +17,6 @@ const PROGRESS_KEY = 'ft-tutorial-progress';
 const BUFFERS_KEY = 'ft-tutorial-buffers';
 const RUN_TIMEOUT_MS = 5000;
 
-if (ide && specEditor && codeEditor && terminal && runButton) init();
-
 // --- defensive localStorage stores ------------------------------------------
 
 function loadStore(key) {
@@ -138,6 +136,11 @@ function init() {
       scheduleSilentRun();
     });
   }
+
+  window.addEventListener('hashchange', () => {
+    const id = window.location.hash.slice(1);
+    if (current && id && id !== current.id) openChapter(id);
+  });
 
   renderRailMarks();
   const fromHash = window.location.hash.slice(1);
@@ -446,3 +449,5 @@ function run(silent) {
 
   worker.postMessage({ files, argv });
 }
+
+if (ide && specEditor && codeEditor && terminal && runButton) init();
