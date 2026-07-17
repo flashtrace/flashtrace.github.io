@@ -993,10 +993,32 @@ h3:hover .heading-anchor,
   padding-bottom: 3.5rem;
 }
 
+.page-legal .doc-content {
+  margin-inline: auto;
+}
+
 .legal address {
   font-style: normal;
   line-height: 1.7;
   color: var(--text);
+}
+
+/* license: the tool repo's raw LICENSE text. Shrink-wrap the block and center
+   it so the text's own space-centered header reads as intended. */
+.license-doc {
+  max-width: 52rem;
+}
+
+.license-doc h1 {
+  text-align: center;
+}
+
+.license-doc pre {
+  width: fit-content;
+  max-width: 100%;
+  margin: 1.75rem auto 0;
+  padding: 2rem 2.5rem;
+  font-size: 0.9rem;
 }
 
 /* ---------- responsive ---------- */
