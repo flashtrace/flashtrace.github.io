@@ -1,7 +1,8 @@
 // The landing page: hero with a CSS-built IDE mock, how-it-works, features,
 // curated interactive examples, install snippets. All static HTML.
-import { colorizeReport, examples, heroTerminal } from './examples.mjs';
+import { examples, heroTerminal } from './examples.mjs';
 import { esc, EXT_ATTRS, GITHUB_URL, highlightTokens, pageShell } from './layout.mjs';
+import { colorizeReport } from './report-colors.mjs';
 
 // --- hero IDE mock -----------------------------------------------------------
 
