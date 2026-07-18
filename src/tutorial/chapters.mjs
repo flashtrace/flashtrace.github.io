@@ -239,7 +239,7 @@ export function endAllSessions(user) {
       {
         title: 'Extend the Needs list',
         explain:
-          'impl:auth/session#1 is still unwanted: it exists, but no item needs it. Coverage nobody asked for is a defect too. Extend the Needs list so the requirement demands it.',
+          'impl:auth/session#1 is still unwanted: it exists, but no item needs it. Coverage nobody asked for is a defect too. Extend the Needs list so the requirement demands it. Note: In a real-world scenario its possible that actually the implementation is stale and should be removed.',
         pane: 'spec',
         anchor: 'needsLine',
         patch: { op: 'replaceLine', anchor: 'needsLine', snippet: 'needsBoth' },
