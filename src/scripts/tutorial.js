@@ -62,11 +62,14 @@ function loadChapterData() {
     const el = document.getElementById('tutorial-data');
     const data = JSON.parse(el.textContent);
     if (data.v !== 1 || !Array.isArray(data.chapters) || data.chapters.length === 0) return null;
-    // checks/done ship as source text of pure, closure-free arrows
+    // checks/done/solve ship as source text of pure, closure-free arrows
     const compile = (src) => new Function('return (' + src + ')')();
     for (const chapter of data.chapters) {
       chapter.done = compile(chapter.done);
-      for (const step of chapter.steps) step.check = compile(step.check);
+      for (const step of chapter.steps) {
+        step.check = compile(step.check);
+        if (step.solve) step.solve = compile(step.solve);
+      }
       chapter.variants = { [data.lang]: chapter.variant }; // applyStep's shape
     }
     return data;
@@ -110,6 +113,11 @@ let currentIndex = 0;
 let panes = null; // { spec: { files: [{ name, body }], active }, code: { ... } }
 let assists = { help: 0, auto: 0 }; // in-memory per chapter visit
 let assistedSteps = new Set(); // step indices solved with an assist, current chapter
+// `run: true` steps ask the user to press Run: an index lands here once a
+// real, user-triggered run happened while every step before it passed, so
+// background silent runs never clear one. Seeded from the persisted done
+// count on open, so a revisit does not regress past a run already made.
+let realRunCleared = new Set();
 let lastResult = null; // r-context of the latest (also silent) run
 let active = null; // { worker, watchdog, silent } of the run in flight
 let saveTimer = null;
@@ -270,6 +278,7 @@ function init() {
       deleteProgressEntry(current.id);
       deleteBufferEntry(current.id);
       deleteStepsEntry(current.id);
+      realRunCleared = new Set();
       setCompletedOverlay(null);
       seedBuffers();
       setText('step-progress', 'Run to check your progress.');
@@ -577,8 +586,13 @@ function openChapter(id) {
   current = chapter;
   currentIndex = data.chapters.indexOf(chapter);
   assists = { help: 0, auto: 0 };
-  assistedSteps = new Set(loadStepEntry(loadStore(STEPS_KEY), id).assisted);
+  const stepEntry = loadStepEntry(loadStore(STEPS_KEY), id);
+  assistedSteps = new Set(stepEntry.assisted);
+  realRunCleared = new Set(
+    chapter.steps.map((step, i) => (step.run && i < stepEntry.done ? i : -1)).filter((i) => i >= 0),
+  );
   lastResult = null;
+  ide.classList.toggle('no-code', Boolean(chapter.noCode));
 
   // rail + url
   document.querySelectorAll('[data-chapter]').forEach((link) => {
@@ -998,13 +1012,26 @@ function syncStepList(currentIndex, force) {
 }
 
 // current step = index of the first failing check; users may type ahead,
-// paste solutions or re-break earlier steps - this always re-converges
+// paste solutions or re-break earlier steps - this always re-converges.
+// A `run: true` step additionally needs its real run on record.
 function firstFailingIndex() {
   if (!current || !lastResult || !lastResult.items) return null;
   for (let i = 0; i < current.steps.length; i++) {
-    if (!safeCheck(current.steps[i].check, lastResult)) return i;
+    const step = current.steps[i];
+    if (!safeCheck(step.check, lastResult) || (step.run && !realRunCleared.has(i))) return i;
   }
   return current.steps.length;
+}
+
+// After a real Run: walk the steps in order and put every `run: true` step
+// reached with all its predecessors passing on record - this run was it.
+function recordRealRun() {
+  if (!current || current.free || !lastResult || !lastResult.items) return;
+  for (let i = 0; i < current.steps.length; i++) {
+    const step = current.steps[i];
+    if (step.run) realRunCleared.add(i);
+    if (!safeCheck(step.check, lastResult) || (step.run && !realRunCleared.has(i))) return;
+  }
 }
 
 function updateStepUi(fromRealRun) {
@@ -1111,6 +1138,7 @@ function run(silent) {
       spec: paneText('spec'),
       code: paneText('code'),
     });
+    if (!wasSilent) recordRealRun();
     if (current && !current.free && result.analysis && !wasSilent && safeCheck(current.done, lastResult)) {
       completeChapter(current);
     }
@@ -1197,6 +1225,9 @@ function assistTarget(step) {
   if (!step) {
     const runRect = rectInIde(runButton);
     return { rect: runRect };
+  }
+  if (step.run) {
+    return { rect: rectInIde(runButton) };
   }
   if (step.pane === 'argv') {
     return { rect: rectInIde(argvInput || runButton) };
@@ -1366,7 +1397,18 @@ function autoAssist() {
     return seedIndex === -1 ? '' : panes[pane].files[seedIndex].body;
   };
   const before = { spec: seedBody('spec'), code: seedBody('code'), argv: currentArgv() };
-  const after = applyStep(current, data.lang, step, before);
+  // an adaptive step derives its snippet from the latest analysis, so the
+  // typed-in solution picks up names the user chose over the static example
+  let override = null;
+  if (step.solve && lastResult && lastResult.items) {
+    try {
+      const suggestion = step.solve(lastResult);
+      if (typeof suggestion === 'string') override = suggestion;
+    } catch {
+      /* fall back to the static snippet */
+    }
+  }
+  const after = applyStep(current, data.lang, step, before, override);
   if (after.failed) {
     openAssist(step);
     hideAssistAuto();

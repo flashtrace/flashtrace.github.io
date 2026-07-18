@@ -75,7 +75,7 @@ function paneTabs(pane, fileName, locked, label) {
 
 function ide(first) {
   const variant = first.variants[LANG];
-  return `<div class="ide-mock ide-lg" id="ide" data-spec-file="${esc(first.spec.file)}" data-code-file="${esc(variant.file)}" data-lang="${LANG}">
+  return `<div class="ide-mock ide-lg${first.noCode ? ' no-code' : ''}" id="ide" data-spec-file="${esc(first.spec.file)}" data-code-file="${esc(variant.file)}" data-lang="${LANG}">
   <div class="ide-chrome">
     ${dots}
     <span class="ide-title" id="ide-title">chapter 1 · ${esc(first.title)}</span>
@@ -233,7 +233,7 @@ function fallbackChapters(verified) {
   </ol>
   <div class="ex-files">
     ${miniWindow(chapter.spec.file, highlightTokens(esc(chapter.spec.body)))}
-    ${miniWindow(variant.file, highlightTokens(esc(variant.body)))}
+    ${chapter.noCode ? '' : miniWindow(variant.file, highlightTokens(esc(variant.body)))}
   </div>
   ${miniWindow('terminal', startTerm, true)}
   <details>

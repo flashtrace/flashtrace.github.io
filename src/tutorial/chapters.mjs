@@ -18,6 +18,14 @@
 // - language-specifics live in `variants` (v1: js); `spec` is neutral
 // - `locked: true` disables file management (add/delete tabs) for the chapter;
 //   its steps then always run against exactly the seeded file pair
+// - `noCode: true` hides the code pane; the variant then only seeds a hidden
+//   empty file so the pane model and the run inputs keep their usual shape
+// - a step with `run: true` (patch: null, pane: 'argv') asks the user to press
+//   Run: it only counts once a real, user-triggered run happened while every
+//   step before it passed - background silent runs never clear it
+// - a step's optional `solve` (serialized like `check`) maps the latest run
+//   result to the snippet text "Do this step for me" should type, adapting
+//   the static example to names the user chose; null falls back to the snippet
 
 export const chapters = [
   // ------------------------------------------------------------ foundations
@@ -26,9 +34,10 @@ export const chapters = [
     title: 'Your first item',
     group: 'Foundations',
     locked: true,
+    noCode: true,
     intro:
-      'flashtrace reads ordinary Markdown. An item is born on a line holding nothing but its ID in backticks - the heading above becomes its title, the paragraph below its description. Build one from scratch and watch the tracer pick it up.',
-    goal: 'Turn the prose into a traceable item: heading, ID line, description.',
+      'flashtrace reads ordinary Markdown. An item is born on a line holding nothing but its ID in backticks - the heading above becomes its title, any paragraph below its description. The file is empty and there is no code yet: invent your own first item and watch the tracer pick it up.',
+    goal: 'Create one traceable item of your own: any heading, any ID.',
     docs: [
       { label: 'Markdown items', href: '/docs/markdown-items/' },
       { label: 'Item IDs', href: '/docs/item-ids/' },
@@ -37,61 +46,42 @@ export const chapters = [
     startsClean: true,
     spec: {
       file: 'spec.md',
-      body: `# Auth spec
-
-Nothing in this file is an item yet - flashtrace only picks up a line
-holding nothing but an ID in backticks.`,
+      body: '',
       anchors: {},
       snippets: {
-        heading: '\n## Login requirement',
+        heading: '## Login requirement',
         idLine: '\n\`req:auth/login#1\`',
-        description: '\nUsers must be able to log in with email and password.',
       },
     },
     variants: {
       js: {
         file: 'login.js',
-        body: `export function login(email, password) {
-  return session.open(email, password);
-}`,
+        body: '',
         anchors: {},
         snippets: {},
       },
     },
     steps: [
       {
-        title: 'Add a heading',
+        title: 'Write a heading',
         explain:
-          'Start with a heading at the end of the spec: "## Login requirement". It is not an item yet - but the heading directly above an ID line becomes that item\'s title.',
+          'Give your item a title: any Markdown heading you like, say "## Login requirement". On its own it is not an item yet - but the heading directly above an ID line becomes that item\'s title.',
         pane: 'spec',
         anchor: null,
         patch: { op: 'append', snippet: 'heading' },
-        check: (r) => /^## Login requirement$/m.test(r.spec),
+        check: (r) => /^#{1,6} \S/m.test(r.spec),
       },
       {
-        title: 'Lay down the ID line',
+        title: 'Lay down an ID line',
         explain:
-          'Now the item itself: a line containing nothing but `req:auth/login#1` in backticks. Run it - the summary jumps from 0 items to 1, titled by your heading.',
+          'Now the item itself: below the heading, a line containing nothing but an ID of your choice in backticks. The format is type:name#revision - `req:auth/login#1`, for example. Run it - the summary jumps from 0 items to 1, titled by your heading.',
         pane: 'spec',
         anchor: null,
         patch: { op: 'append', snippet: 'idLine' },
-        check: (r) => r.items.some((i) => i.id === 'req:auth/login#1' && i.title === 'Login requirement'),
-      },
-      {
-        title: 'Describe the item',
-        explain:
-          'Give the item a description: the paragraph right below the ID line, up to the next blank line. Everything after that stays informative prose.',
-        pane: 'spec',
-        anchor: null,
-        patch: { op: 'append', snippet: 'description' },
-        check: (r) => r.items.some((i) => i.id === 'req:auth/login#1' && i.description.length > 0),
+        check: (r) => r.items.some((i) => Boolean(i.title)),
       },
     ],
-    done: (r) =>
-      r.clean &&
-      r.items.some(
-        (i) => i.id === 'req:auth/login#1' && i.title === 'Login requirement' && i.description.length > 0,
-      ),
+    done: (r) => r.clean && r.items.some((i) => Boolean(i.title)),
   },
 
   {
@@ -100,7 +90,7 @@ holding nothing but an ID in backticks.`,
     group: 'Foundations',
     locked: true,
     intro:
-      'An item without Needs asks for nothing - the trace stays green but toothless. Demand an implementation with a Needs: list, watch the run go red, then satisfy it with a tag in an ordinary code comment.',
+      'An item without Needs asks for nothing - the trace stays green but toothless. Demand an implementation with a Needs: list - the name of the needed item is yours to pick - watch the run go red, then satisfy it with a tag in an ordinary code comment.',
     goal: 'Make req:auth/login#1 demand an implementation, then provide it.',
     docs: [
       { label: 'Markdown items', href: '/docs/markdown-items/' },
@@ -140,26 +130,42 @@ Users must be able to log in with email and password.`,
       {
         title: 'Demand an implementation',
         explain:
-          'Add "Needs: impl:auth/login#1" below the description. Run it: the requirement turns defective - uncovered - because nothing defines that ID yet. That red is the whole point of tracing.',
+          'Add a Needs: line below the description naming an implementation item - call it what you like, "Needs: impl:auth/login#1" for instance. Run it: the requirement turns defective - uncovered - because nothing defines that ID yet. That red is the whole point of tracing.',
         pane: 'spec',
         anchor: 'description',
         patch: { op: 'insertAfter', snippet: 'needsLine' },
-        check: (r) => r.items.some((i) => i.id === 'req:auth/login#1' && i.needs.includes('impl:auth/login#1')),
+        check: (r) => r.items.some((i) => i.id === 'req:auth/login#1' && i.needs.length > 0),
       },
       {
         title: 'Cover it from the code',
         explain:
-          'Cover it from the code: put the comment "// [impl:auth/login#1]" directly above the login function. A tag in a comment defines the item that satisfies the need.',
+          'Cover it from the code: put a comment holding the needed ID in square brackets - like "// [impl:auth/login#1]" - directly above the login function. A tag in a comment defines the item that satisfies the need.',
         pane: 'code',
         anchor: 'loginFn',
         patch: { op: 'insertBefore', snippet: 'implTag' },
-        check: (r) => r.items.some((i) => i.id === 'impl:auth/login#1' && i.origin === 'code'),
+        solve: (r) => {
+          const q = r.items.find((i) => i.id === 'req:auth/login#1');
+          return q && q.needs.length > 0 ? '// [' + q.needs[0] + ']' : null;
+        },
+        check: (r) => {
+          const q = r.items.find((i) => i.id === 'req:auth/login#1');
+          return (
+            q !== undefined &&
+            q.needs.length > 0 &&
+            q.needs.every((n) => r.items.some((i) => i.id === n && i.origin === 'code'))
+          );
+        },
       },
     ],
-    done: (r) =>
-      r.clean &&
-      r.items.some((i) => i.id === 'impl:auth/login#1') &&
-      r.items.some((i) => i.id === 'req:auth/login#1' && i.needs.includes('impl:auth/login#1')),
+    done: (r) => {
+      const q = r.items.find((i) => i.id === 'req:auth/login#1');
+      return (
+        r.clean &&
+        q !== undefined &&
+        q.needs.length > 0 &&
+        q.needs.every((n) => r.items.some((i) => i.id === n && i.origin === 'code'))
+      );
+    },
   },
 
   {
@@ -211,6 +217,16 @@ export function endAllSessions(user) {
     },
     steps: [
       {
+        title: 'Run the trace',
+        explain:
+          'Press ▶ Run and read the report before touching anything. Each defective item gets one ✘ block: its ID, its location and one bullet per defect. Three blocks come back - and two of them mirror each other.',
+        pane: 'argv',
+        run: true,
+        anchor: null,
+        patch: null,
+        check: (r) => r.exitCode !== null,
+      },
+      {
         title: 'Fix the typo in the code tag',
         explain:
           'The report pairs an "uncovered: needs impl:auth/logout#1" with an "unwanted: no item needs impl:auth/logut#1" - spot the missing letter. Fix the typo in the code tag and both blocks disappear together.',
@@ -238,18 +254,18 @@ export function endAllSessions(user) {
 
   {
     id: 'covers-and-orphans',
-    title: 'Covers: & orphans',
+    title: 'Covers: & unwanted',
     group: 'Foundations',
     locked: true,
     intro:
-      'Coverage can also be declared from the covering side: a Covers: entry names the item this one covers. It is only valid when the target exists and needs the coverer back - otherwise you get an orphaned or unwanted defect. Repair a broken Covers chain.',
+      'Coverage can also be declared from the covering side: a Covers: entry names the item this one covers. Declaring it is only half the deal, though - the entry counts once the target asks for the coverer in its own Needs. Wire the login requirement to the auth feature and close that loop.',
     goal: 'Make req:auth/login#1 validly cover the auth feature.',
     docs: [
       { label: 'Markdown items', href: '/docs/markdown-items/' },
       { label: 'Coverage rules', href: '/docs/coverage-rules/' },
     ],
     argv: [],
-    startsClean: false,
+    startsClean: true,
     spec: {
       file: 'spec.md',
       body: `## Auth feature
@@ -262,15 +278,13 @@ Everything a user needs to prove who they are.
 
 \`req:auth/login#1\`
 
-Users must be able to log in with email and password.
-
-Covers: feat:auth#2`,
+Users must be able to log in with email and password.`,
       anchors: {
-        coversLine: '^Covers: feat:auth#2$',
+        loginDescription: '^Users must be able to log in with email and password\\.$',
         featDescription: '^Everything a user needs to prove who they are\\.$',
       },
       snippets: {
-        coversFixed: 'Covers: feat:auth#1',
+        coversLine: '\nCovers: feat:auth#1',
         featNeeds: '\nNeeds: req:auth/login#1',
       },
     },
@@ -286,21 +300,31 @@ Covers: feat:auth#2`,
     },
     steps: [
       {
-        title: 'Fix the orphaned Covers',
+        title: 'Write a Covers: entry',
         explain:
-          'The requirement covers feat:auth#2 - which does not exist. The report even hints that feat:auth exists at revision 1. An orphaned Covers points into the void; fix the revision.',
+          'Below the login description, add "Covers: feat:auth#1" - the requirement now claims to cover the feature above it.',
         pane: 'spec',
-        anchor: 'coversLine',
-        patch: { op: 'replaceLine', anchor: 'coversLine', snippet: 'coversFixed' },
+        anchor: 'loginDescription',
+        patch: { op: 'insertAfter', snippet: 'coversLine' },
         check: (r) => {
           const q = r.items.find((i) => i.id === 'req:auth/login#1');
           return q !== undefined && q.covers.includes('feat:auth#1');
         },
       },
       {
+        title: 'Run the trace',
+        explain:
+          'Run it: the Covers entry comes back unwanted - feat:auth#1 exists, but it never asked for this coverage. (Pointing at an ID that does not exist at all would be an orphaned entry instead.) One side declaring is not enough.',
+        pane: 'argv',
+        run: true,
+        anchor: null,
+        patch: null,
+        check: (r) => r.exitCode !== null,
+      },
+      {
         title: 'Close the loop',
         explain:
-          'Still not ok: now the Covers is unwanted, because feat:auth#1 never asked for it. A Covers entry is only valid when the target lists the coverer in its own Needs. Close the loop on the feature item.',
+          'A Covers entry is only valid when the target lists the coverer in its own Needs. Add "Needs: req:auth/login#1" below the feature\'s description - run again and the loop closes.',
         pane: 'spec',
         anchor: 'featDescription',
         patch: { op: 'insertAfter', snippet: 'featNeeds' },
@@ -310,7 +334,10 @@ Covers: feat:auth#2`,
         },
       },
     ],
-    done: (r) => r.clean && r.items.some((i) => i.id === 'feat:auth#1' && i.needs.includes('req:auth/login#1')),
+    done: (r) =>
+      r.clean &&
+      r.items.some((i) => i.id === 'feat:auth#1' && i.needs.includes('req:auth/login#1')) &&
+      r.items.some((i) => i.id === 'req:auth/login#1' && i.covers.includes('feat:auth#1')),
   },
 
   // --------------------------------------------------------------- features

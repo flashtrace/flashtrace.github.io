@@ -79,9 +79,11 @@ export function analyzeBuffers(mod, files, argv) {
 // (the buffers were edited away from what the step expects).
 //
 // Conventions (see chapters.mjs): anchors are regex sources compiled with 'm';
-// insertAfter/append prefix the snippet with '\n', insertBefore suffixes it,
-// so multi-line snippets and blank separator lines are encoded in the snippet.
-export function applyStep(chapter, lang, step, state) {
+// insertAfter/append prefix the snippet with '\n' (append onto an empty buffer
+// skips the prefix), insertBefore suffixes it, so multi-line snippets and
+// blank separator lines are encoded in the snippet. `snippetOverride` replaces
+// the static snippet text - the adaptive "solve" path of the auto assist.
+export function applyStep(chapter, lang, step, state, snippetOverride) {
   const patch = step.patch;
   if (!patch) return { ...state, changed: null };
   if (patch.op === 'setArgv') {
@@ -90,14 +92,14 @@ export function applyStep(chapter, lang, step, state) {
   const pane = step.pane;
   const pack = pane === 'spec' ? chapter.spec : chapter.variants[lang];
   const text = state[pane];
-  const snippet = patch.snippet === undefined ? '' : pack.snippets[patch.snippet];
+  const snippet = snippetOverride ?? (patch.snippet === undefined ? '' : pack.snippets[patch.snippet]);
   let start;
   let end;
   let insert;
   if (patch.op === 'append') {
     start = text.length;
     end = text.length;
-    insert = '\n' + snippet;
+    insert = text.length === 0 ? snippet : '\n' + snippet;
   } else {
     const anchorKey = patch.anchor ?? step.anchor;
     const anchorSource = pack.anchors[anchorKey];

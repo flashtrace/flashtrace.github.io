@@ -550,6 +550,16 @@ button {
   border-left: 1px solid #33302c;
 }
 
+/* a noCode chapter has no source: the code pane disappears entirely and the
+   spec spreads across the full width */
+.ide-mock.no-code .ide-panes {
+  grid-template-columns: 1fr;
+}
+
+.ide-mock.no-code .ide-pane + .ide-pane {
+  display: none;
+}
+
 .pane-tab {
   display: inline-block;
   padding: 0.35rem 1rem;

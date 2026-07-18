@@ -33,11 +33,14 @@ function stableStringify(value) {
 // the active language variant. Doubles as the identity-hash input, so *any*
 // content change - even a typo in a step text - yields a new `rev`.
 export function chapterPayload(chapter, lang) {
+  // `noCode`/`run`/`solve` only serialize when set, so chapters without them
+  // keep the rev they had before these fields existed
   return {
     id: chapter.id,
     title: chapter.title,
     group: chapter.group,
     locked: Boolean(chapter.locked),
+    ...(chapter.noCode ? { noCode: true } : {}),
     intro: chapter.intro,
     goal: chapter.goal,
     docs: chapter.docs,
@@ -51,6 +54,8 @@ export function chapterPayload(chapter, lang) {
       anchor: step.anchor,
       patch: step.patch,
       check: step.check.toString(),
+      ...(step.run ? { run: true } : {}),
+      ...(step.solve ? { solve: step.solve.toString() } : {}),
     })),
     done: chapter.done.toString(),
   };
@@ -190,10 +195,25 @@ export async function verifyChapters(chapters, bundlePath, lang) {
       'the done condition already passes on the seed buffers - the chapter would complete on the first run',
     );
 
+    let beforeStep = start;
     for (let i = 0; i < chapter.steps.length; i++) {
-      state = applyStep(chapter, lang, chapter.steps[i], state);
+      const step = chapter.steps[i];
+      // an adaptive solve() must reproduce the static snippet when the user
+      // followed the static path - anything else would drift from the patch
+      // the auto assist falls back to
+      if (step.solve && step.patch && step.patch.snippet !== undefined) {
+        const pack = step.pane === 'spec' ? chapter.spec : chapter.variants[lang];
+        assertThat(
+          step.solve(beforeStep.r) === pack.snippets[step.patch.snippet],
+          chapter,
+          `step ${i + 1} solve`,
+          'solve() on the pre-step state does not reproduce the static snippet',
+        );
+      }
+      state = applyStep(chapter, lang, step, state);
       assertThat(!state.failed, chapter, `step ${i + 1} patch`, 'the anchor did not match the patched buffers');
       const after = await runState(bundleUrl, chapter, lang, state);
+      beforeStep = after;
       for (let j = 0; j <= i; j++) {
         assertThat(
           chapter.steps[j].check(after.r) === true,
