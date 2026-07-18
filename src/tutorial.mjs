@@ -104,7 +104,10 @@ function ide(first) {
       <span class="done-check" aria-hidden="true">✓</span>
       <p class="done-title">Chapter complete</p>
       <p class="done-text" id="done-text"></p>
-      <button type="button" class="btn btn-secondary" id="done-reset" title="Forget this completion and restore the start files">Reset chapter</button>
+      <div class="done-actions">
+        <button type="button" class="btn btn-secondary" id="done-view" title="Dismiss this card to inspect your solved files">View</button>
+        <button type="button" class="btn btn-secondary" id="done-reset" title="Forget this completion and restore the start files">Reset chapter</button>
+      </div>
     </div>
   </div>
   <div class="spotlight" id="spotlight" hidden><div class="spotlight-hole" id="spotlight-hole"></div></div>

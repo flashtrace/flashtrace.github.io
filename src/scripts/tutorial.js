@@ -254,6 +254,14 @@ function init() {
     });
   }
 
+  const doneView = document.getElementById('done-view');
+  if (doneView) {
+    // peek at the solved files without forgetting the completion: hide the
+    // card and un-inert the IDE for this visit only. nothing is persisted, so
+    // reopening the chapter shows the card again.
+    doneView.addEventListener('click', () => setCompletedOverlay(null));
+  }
+
   const doneReset = document.getElementById('done-reset');
   if (doneReset) {
     doneReset.addEventListener('click', () => {

@@ -1793,6 +1793,13 @@ h3:hover .heading-anchor,
   color: #a8a29e;
 }
 
+.done-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
 /* the card sits in the always-dark IDE - fix the button to dark values */
 .done-card .btn-secondary {
   border-color: #57534e;
