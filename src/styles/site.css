@@ -1727,6 +1727,44 @@ h3:hover .heading-anchor,
   margin-top: 1rem;
 }
 
+/* file dialogs (new file / delete file) */
+
+.file-modal .file-fields {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.6rem 0.75rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.file-modal label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.file-modal input {
+  min-width: 0;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.85rem;
+}
+
+.file-modal input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* the generic .resume-modal p rule would win on color */
+.file-error {
+  margin-top: 0.9rem;
+  color: var(--accent-strong) !important;
+  font-size: 0.9rem;
+}
+
 /* no-JS fallback */
 
 .tutorial-fallback {
@@ -1833,6 +1871,108 @@ h3:hover .heading-anchor,
    textarea's, desyncing glyph widths and drifting the caret rightwards */
 .editor-highlight code {
   font: inherit;
+}
+
+/* pane tab strips: one file list per pane - click to switch, ✕ to delete,
+   + to add; locked chapters show padlocks and a disabled + instead */
+
+.pane-tabs {
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  background: #191715;
+}
+
+.pane-tabs::-webkit-scrollbar {
+  height: 6px;
+}
+
+.pane-tabs::-webkit-scrollbar-thumb {
+  border-width: 2px;
+}
+
+.pane-tabs .pane-tab {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  padding: 0;
+  color: #8b8b8b;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+}
+
+.pane-tabs .pane-tab.is-active {
+  color: #d4d4d4;
+  background: #1e1e1e;
+  border-bottom-color: var(--accent);
+}
+
+.tab-name {
+  padding: 0.35rem 0.5rem 0.35rem 1rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tab-name:last-child {
+  padding-right: 1rem;
+}
+
+.pane-tab:not(.is-active) .tab-name:hover {
+  color: #d4d4d4;
+}
+
+.tab-close {
+  flex: none;
+  margin-right: 0.45rem;
+  padding: 0.2rem 0.3rem;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: #6b6762;
+  font: inherit;
+  font-size: 0.65rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tab-close:hover {
+  color: #e7e5e4;
+  background: #33302c;
+}
+
+.tab-lock {
+  flex: none;
+  width: 0.6rem;
+  height: 0.6rem;
+  margin-right: 0.7rem;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3.5 5V3.5a2.5 2.5 0 0 1 5 0V5H9a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h.5Zm1.2 0h2.6V3.5a1.3 1.3 0 0 0-2.6 0V5Z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3.5 5V3.5a2.5 2.5 0 0 1 5 0V5H9a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h.5Zm1.2 0h2.6V3.5a1.3 1.3 0 0 0-2.6 0V5Z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.tab-add {
+  flex: none;
+  padding: 0.25rem 0.7rem;
+  border: 0;
+  background: none;
+  color: #8b8b8b;
+  font: inherit;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.tab-add:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+.tab-add:disabled {
+  color: #55524e;
+  cursor: not-allowed;
 }
 
 .ide-lg .term-lg {

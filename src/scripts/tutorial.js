@@ -14,6 +14,8 @@ const codeEditor = document.getElementById('ed-code');
 const terminal = document.getElementById('term-out');
 const runButton = document.getElementById('run-btn');
 const argvInput = document.getElementById('argv-input');
+const specTabs = document.getElementById('spec-tabs');
+const codeTabs = document.getElementById('code-tabs');
 
 const PROGRESS_KEY = 'ft-tutorial-progress';
 const BUFFERS_KEY = 'ft-tutorial-buffers';
@@ -98,6 +100,12 @@ const FREE_EDITOR = {
 let data = null;
 let current = null; // active chapter object
 let currentIndex = 0;
+// Editable files, one list per pane: the left pane holds the Markdown spec
+// side, the right the code side. Each pane shows its active file in the
+// textarea; the editors' input listeners keep the active body in sync, so the
+// model is always current. Chapters marked `locked` render padlocks instead
+// of close buttons and a disabled "+".
+let panes = null; // { spec: { files: [{ name, body }], active }, code: { ... } }
 let assists = { help: 0, auto: 0 }; // in-memory per chapter visit
 let lastResult = null; // r-context of the latest (also silent) run
 let active = null; // { worker, watchdog, silent } of the run in flight
@@ -144,8 +152,22 @@ function refreshHighlights() {
 }
 
 function init() {
+  // seed the pane model from the server-rendered buffers; openChapter replaces
+  // it, and the bare runner (no chapter data) keeps working on exactly this
+  panes = {
+    spec: { files: [{ name: ide.dataset.specFile || 'spec.md', body: specEditor.value }], active: 0 },
+    code: { files: [{ name: ide.dataset.codeFile || 'code.js', body: codeEditor.value }], active: 0 },
+  };
   setupHighlight(specEditor);
   setupHighlight(codeEditor);
+  specEditor.addEventListener('input', () => {
+    activeFile('spec').body = specEditor.value;
+  });
+  codeEditor.addEventListener('input', () => {
+    activeFile('code').body = codeEditor.value;
+  });
+  initTabs();
+  renderAllTabs();
   runButton.addEventListener('click', () => run(false));
   for (const editor of [specEditor, codeEditor]) {
     editor.addEventListener('keydown', (event) => {
@@ -266,11 +288,247 @@ function chapterById(id) {
   return data.chapters.find((c) => c.id === id) ?? null;
 }
 
-function seedBuffers() {
-  specEditor.value = current.spec.body;
-  codeEditor.value = current.variant.body;
-  if (argvInput) argvInput.value = current.argv.join(' ');
+// --- file management ---------------------------------------------------------
+// Each pane owns a tab strip over its files: click to switch, ✕ to delete
+// (confirmed), + to create (name + type dialog validated against the
+// extensions the datalists ship). Locked chapters show padlocks instead.
+
+const LOCK_TIP = 'This chapter does not allow file management';
+
+function isLocked() {
+  return Boolean(current && current.locked);
+}
+
+function tabStrip(pane) {
+  return pane === 'spec' ? specTabs : codeTabs;
+}
+
+function activeFile(pane) {
+  const state = panes[pane];
+  return state.files[state.active];
+}
+
+// push both active files into their textareas after any model change
+function syncEditors() {
+  specEditor.value = activeFile('spec').body;
+  codeEditor.value = activeFile('code').body;
   refreshHighlights();
+  renderAllTabs();
+}
+
+function renderTabs(pane) {
+  const strip = tabStrip(pane);
+  if (!strip) return;
+  const state = panes[pane];
+  const locked = isLocked();
+  const tab = (file, i) => {
+    const on = i === state.active;
+    const trailer = locked
+      ? '<span class="tab-lock" title="' + LOCK_TIP + '"></span>'
+      : state.files.length > 1
+        ? '<button type="button" class="tab-close" data-index="' + i + '" title="Delete ' + esc(file.name) + '" aria-label="Delete ' + esc(file.name) + '">✕</button>'
+        : '';
+    return (
+      '<div class="pane-tab' + (on ? ' is-active' : '') + '">' +
+      '<button type="button" class="tab-name" data-index="' + i + '"' + (on ? ' aria-current="true"' : '') + '>' + esc(file.name) + '</button>' +
+      trailer +
+      '</div>'
+    );
+  };
+  const addAttrs = locked ? ' disabled title="' + LOCK_TIP + '"' : ' title="New file"';
+  strip.innerHTML =
+    state.files.map(tab).join('') +
+    '<button type="button" class="tab-add"' + addAttrs + ' aria-label="New file">+</button>';
+}
+
+function renderAllTabs() {
+  renderTabs('spec');
+  renderTabs('code');
+}
+
+function selectTab(pane, index) {
+  const state = panes[pane];
+  if (!state.files[index] || index === state.active) return;
+  state.active = index;
+  syncEditors();
+}
+
+function initTabs() {
+  for (const pane of ['spec', 'code']) {
+    const strip = tabStrip(pane);
+    if (!strip) continue;
+    strip.addEventListener('click', (event) => {
+      const button = event.target.closest('button');
+      if (!button || button.disabled) return;
+      if (button.classList.contains('tab-name')) selectTab(pane, Number(button.dataset.index));
+      else if (button.classList.contains('tab-close')) confirmDeleteFile(pane, Number(button.dataset.index));
+      else if (button.classList.contains('tab-add')) openNewFileDialog(pane);
+    });
+  }
+  initNewFileDialog();
+  initDeleteFileDialog();
+}
+
+// --- deleting ----------------------------------------------------------------
+
+let deleteFileContext = null; // { pane, index } while the confirm dialog is up
+
+function initDeleteFileDialog() {
+  const modal = document.getElementById('delfile-modal');
+  const yes = document.getElementById('delfile-yes');
+  const cancel = document.getElementById('delfile-cancel');
+  if (!modal || !yes || !cancel) return;
+  yes.addEventListener('click', () => {
+    modal.close();
+    if (deleteFileContext) deleteFile(deleteFileContext.pane, deleteFileContext.index);
+    deleteFileContext = null;
+  });
+  cancel.addEventListener('click', () => {
+    modal.close();
+    deleteFileContext = null;
+  });
+  modal.addEventListener('cancel', () => {
+    deleteFileContext = null;
+  });
+}
+
+function confirmDeleteFile(pane, index) {
+  const state = panes[pane];
+  const file = state.files[index];
+  if (isLocked() || !file || state.files.length < 2) return;
+  const modal = document.getElementById('delfile-modal');
+  if (!modal || typeof modal.showModal !== 'function') {
+    if (window.confirm('Delete ' + file.name + '? Its content is lost.')) deleteFile(pane, index);
+    return;
+  }
+  deleteFileContext = { pane, index };
+  setText('delfile-text', 'Delete ' + file.name + '? Its content is lost - this cannot be undone.');
+  modal.showModal();
+}
+
+function deleteFile(pane, index) {
+  const state = panes[pane];
+  if (!state.files[index] || state.files.length < 2) return;
+  state.files.splice(index, 1);
+  if (state.active > index) state.active -= 1;
+  else if (state.active >= state.files.length) state.active = state.files.length - 1;
+  syncEditors();
+  saveBuffers();
+  scheduleSilentRun();
+}
+
+// --- creating ----------------------------------------------------------------
+
+let newFilePane = null; // pane the new-file dialog was opened for
+
+function supportedExtensions(pane) {
+  const list = document.getElementById(pane === 'spec' ? 'ext-spec' : 'ext-code');
+  return list ? Array.from(list.querySelectorAll('option'), (o) => o.value) : [];
+}
+
+// Resolve the dialog's two fields into a final file name or a user-facing
+// error; an extension typed into the name itself wins over the type field.
+// `issue: true` marks "unsupported anywhere" - the dialog then offers the
+// tool's issue tracker for a new-language request.
+function resolveNewFile(pane) {
+  const name = (document.getElementById('newfile-name').value || '').trim();
+  const typed = (document.getElementById('newfile-ext').value || '').trim().toLowerCase();
+  if (!name) return { error: '' }; // nothing typed yet - just keep Create disabled
+  if (!/^[A-Za-z0-9._-]+$/.test(name)) return { error: 'Use letters, digits, dots, dashes and underscores only.' };
+  const own = /\.[a-z0-9]+$/i.exec(name);
+  const ext = own ? own[0].toLowerCase() : typed ? (typed.startsWith('.') ? typed : '.' + typed) : '';
+  if (!ext) return { error: '' }; // waiting for a type
+  const full = own ? name : name + ext;
+  if (full.toLowerCase() === ext) return { error: 'Give the file a name before its extension.' };
+  const here = supportedExtensions(pane);
+  if (!here.includes(ext)) {
+    const other = supportedExtensions(pane === 'spec' ? 'code' : 'spec');
+    if (other.includes(ext)) {
+      return {
+        error:
+          pane === 'spec'
+            ? 'The left pane holds the Markdown spec - create ' + ext + ' files with the + on the right.'
+            : 'Markdown belongs in the spec pane - use the + on the left.',
+      };
+    }
+    return { error: 'flashtrace sadly does not support ' + ext + ' files yet.', issue: true };
+  }
+  const taken = [...panes.spec.files, ...panes.code.files].some((f) => f.name.toLowerCase() === full.toLowerCase());
+  if (taken) return { error: 'A file named ' + full + ' already exists.' };
+  return { name: full };
+}
+
+function initNewFileDialog() {
+  const modal = document.getElementById('newfile-modal');
+  const name = document.getElementById('newfile-name');
+  const ext = document.getElementById('newfile-ext');
+  const create = document.getElementById('newfile-create');
+  const cancel = document.getElementById('newfile-cancel');
+  const error = document.getElementById('newfile-error');
+  const errorText = document.getElementById('newfile-error-text');
+  const issue = document.getElementById('newfile-issue');
+  if (!modal || !name || !ext || !create || !cancel) return;
+  const validate = () => {
+    const resolved = resolveNewFile(newFilePane);
+    create.disabled = !resolved.name;
+    if (error) error.hidden = !resolved.error;
+    if (errorText) errorText.textContent = resolved.error || '';
+    if (issue) issue.hidden = !resolved.issue;
+    return resolved;
+  };
+  const submit = () => {
+    const resolved = validate();
+    if (!resolved.name) return;
+    modal.close();
+    createFile(newFilePane, resolved.name);
+  };
+  name.addEventListener('input', validate);
+  ext.addEventListener('input', validate);
+  create.addEventListener('click', submit);
+  cancel.addEventListener('click', () => modal.close());
+  for (const field of [name, ext]) {
+    field.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        submit();
+      }
+    });
+  }
+}
+
+function openNewFileDialog(pane) {
+  const modal = document.getElementById('newfile-modal');
+  const name = document.getElementById('newfile-name');
+  const ext = document.getElementById('newfile-ext');
+  if (isLocked() || !modal || !name || !ext || typeof modal.showModal !== 'function') return;
+  newFilePane = pane;
+  name.value = '';
+  ext.value = pane === 'spec' ? '.md' : '.js';
+  ext.setAttribute('list', pane === 'spec' ? 'ext-spec' : 'ext-code');
+  const error = document.getElementById('newfile-error');
+  if (error) error.hidden = true;
+  document.getElementById('newfile-create').disabled = true;
+  modal.showModal();
+  name.focus();
+}
+
+function createFile(pane, fileName) {
+  const state = panes[pane];
+  state.files.push({ name: fileName, body: '' });
+  state.active = state.files.length - 1;
+  syncEditors();
+  saveBuffers();
+  scheduleSilentRun();
+  paneEditor(pane).focus();
+}
+
+function seedBuffers() {
+  panes = {
+    spec: { files: [{ name: current.spec.file, body: current.spec.body }], active: 0 },
+    code: { files: [{ name: current.variant.file, body: current.variant.body }], active: 0 },
+  };
+  syncEditors();
+  if (argvInput) argvInput.value = current.argv.join(' ');
 }
 
 function openChapter(id) {
@@ -313,8 +571,6 @@ function openChapter(id) {
       .map((d) => '<a href="' + esc(d.href) + '">' + esc(d.label) + '</a>')
       .join(' · ');
   }
-  setText('spec-tab', chapter.spec.file);
-  setText('code-tab', chapter.variant.file);
   terminal.innerHTML = '<span class="t-dim">press Run to trace the project</span>';
   closeAssist();
   for (const btn of [document.getElementById('help-btn'), document.getElementById('auto-btn')]) {
@@ -343,11 +599,33 @@ function openChapter(id) {
   }
 }
 
+// Rebuild the pane model from a stored entry. Entries written before the
+// multi-file model carry plain `spec`/`code` strings; they map onto the
+// chapter's seeded file names.
 function restoreStored(chapter, stored) {
-  specEditor.value = String(stored.spec);
-  codeEditor.value = String(stored.code);
+  const sane = (p, fallback) => {
+    const files = Array.isArray(p && p.files)
+      ? p.files
+          .filter((f) => f && typeof f.name === 'string' && typeof f.body === 'string')
+          .map((f) => ({ name: f.name, body: f.body }))
+      : [];
+    if (files.length === 0) files.push({ name: fallback.file, body: fallback.body });
+    const active = Math.min(Math.max(0, Math.trunc(Number(p && p.active)) || 0), files.length - 1);
+    return { files, active };
+  };
+  if (stored.panes) {
+    panes = {
+      spec: sane(stored.panes.spec, chapter.spec),
+      code: sane(stored.panes.code, chapter.variant),
+    };
+  } else {
+    panes = {
+      spec: { files: [{ name: chapter.spec.file, body: String(stored.spec) }], active: 0 },
+      code: { files: [{ name: chapter.variant.file, body: String(stored.code) }], active: 0 },
+    };
+  }
+  syncEditors();
   if (argvInput) argvInput.value = chapter.argv.join(' ');
-  refreshHighlights();
 }
 
 function setText(id, text) {
@@ -399,20 +677,36 @@ function relativeTime(iso) {
 
 // --- persistence -------------------------------------------------------------
 
+// Pristine entries are deleted on save, so under the multi-file shape a
+// stored entry always means real work; only legacy string entries can still
+// equal the seeds.
+function storedPristine(chapter, stored) {
+  if (stored.panes) return false;
+  return stored.spec === chapter.spec.body && stored.code === chapter.variant.body;
+}
+
 function saveBuffers() {
-  if (!current) return;
+  if (!current || !panes) return;
   const store = loadStore(BUFFERS_KEY);
+  const only = (pane) => (panes[pane].files.length === 1 ? panes[pane].files[0] : null);
+  const spec = only('spec');
+  const code = only('code');
   const pristine =
-    specEditor.value === current.spec.body && codeEditor.value === current.variant.body;
+    spec && code &&
+    spec.name === current.spec.file && spec.body === current.spec.body &&
+    code.name === current.variant.file && code.body === current.variant.body;
   if (pristine) {
     delete store.chapters[current.id];
   } else {
+    const snapshot = (pane) => ({
+      files: panes[pane].files.map((f) => ({ name: f.name, body: f.body })),
+      active: panes[pane].active,
+    });
     store.chapters[current.id] = {
       rev: current.rev,
       lang: data.lang,
       savedAt: new Date().toISOString(),
-      spec: specEditor.value,
-      code: codeEditor.value,
+      panes: { spec: snapshot('spec'), code: snapshot('code') },
     };
   }
   saveStore(BUFFERS_KEY, store);
@@ -615,9 +909,10 @@ function run(silent) {
   }
 
   const argv = currentArgv();
-  const specName = current ? current.spec.file : ide.dataset.specFile || 'spec.md';
-  const codeName = current ? current.variant.file : ide.dataset.codeFile || 'code.js';
-  const files = { [specName]: specEditor.value, [codeName]: codeEditor.value };
+  const files = {};
+  for (const pane of ['spec', 'code']) {
+    for (const file of panes[pane].files) files[file.name] = file.body;
+  }
   const prompt = '<span class="t-dim">$</span> ' + esc(['npx flashtrace'].concat(argv).join(' ')) + '\n';
 
   if (!silent) {
@@ -645,11 +940,16 @@ function run(silent) {
       const body = result.output ? colorizeReport(result.output) + '\n' : '';
       showTerminal(prompt + body + '<span class="t-dim">exit ' + result.exitCode + '</span>');
     }
+    // checks read r.spec / r.code as raw text: with several files per pane
+    // they see the pane's files joined, so work spread over added files still
+    // satisfies text-based checks; r.files carries the run's input snapshot
+    const paneText = (pane) => panes[pane].files.map((f) => f.body).join('\n');
     lastResult = Object.assign({}, result.analysis, {
       exitCode: result.exitCode,
       argv,
-      spec: specEditor.value,
-      code: codeEditor.value,
+      files,
+      spec: paneText('spec'),
+      code: paneText('code'),
     });
     if (current && !current.free && result.analysis && !wasSilent && safeCheck(current.done, lastResult)) {
       completeChapter(current);
@@ -694,6 +994,23 @@ function paneEditor(pane) {
   return pane === 'spec' ? specEditor : codeEditor;
 }
 
+// Steps patch the chapter's seeded files by name; tabs the user added are
+// theirs alone. In an unlocked chapter the seed can have been deleted -
+// callers handle the -1.
+function seedFileIndex(pane) {
+  const name = pane === 'spec' ? current.spec.file : current.variant.file;
+  return panes[pane].files.findIndex((f) => f.name === name);
+}
+
+// Bring the seeded file of the step's pane into view; false if it is gone.
+function focusSeedTab(step) {
+  if (!step || step.pane === 'argv') return true;
+  const index = seedFileIndex(step.pane);
+  if (index === -1) return false;
+  selectTab(step.pane, index);
+  return true;
+}
+
 function rectInIde(el) {
   const a = el.getBoundingClientRect();
   const b = ide.getBoundingClientRect();
@@ -724,7 +1041,8 @@ function assistTarget(step) {
     return { rect: rectInIde(argvInput || runButton) };
   }
   const editor = paneEditor(step.pane);
-  const tab = document.getElementById(step.pane === 'spec' ? 'spec-tab' : 'code-tab');
+  const strip = tabStrip(step.pane);
+  const tab = strip ? strip.querySelector('.pane-tab.is-active') : null;
   if (window.innerWidth < 700) return { rect: rectInIde(tab || editor) };
   const pack = step.pane === 'spec' ? current.spec : current.variant;
   const anchorKey = (step.patch && step.patch.anchor) || step.anchor;
@@ -802,6 +1120,7 @@ function helpAssist() {
   if (!current || typing) return;
   const step = currentStep();
   if (step) assists.help += 1;
+  focusSeedTab(step); // anchor resolution needs the seeded file visible
   openAssist(step);
 }
 
@@ -856,7 +1175,25 @@ function autoAssist() {
     return;
   }
   const step = current.steps[index];
-  const before = { spec: specEditor.value, code: codeEditor.value, argv: currentArgv() };
+  if (!focusSeedTab(step)) {
+    // the seeded file this step patches was deleted (unlocked chapters allow it)
+    openAssist(step);
+    const text = document.getElementById('assist-text');
+    if (text) {
+      const seedFile = step.pane === 'spec' ? current.spec.file : current.variant.file;
+      text.textContent =
+        'This step edits ' + seedFile + ', which no longer exists. ' +
+        'Use "Reset files" to restore the chapter\'s start files, or recreate it and follow the hint by hand: ' +
+        step.explain;
+    }
+    return;
+  }
+  // applyStep patches the seeded files; extra tabs the user added stay untouched
+  const seedBody = (pane) => {
+    const seedIndex = seedFileIndex(pane);
+    return seedIndex === -1 ? '' : panes[pane].files[seedIndex].body;
+  };
+  const before = { spec: seedBody('spec'), code: seedBody('code'), argv: currentArgv() };
   const after = applyStep(current, data.lang, step, before);
   if (after.failed) {
     openAssist(step);

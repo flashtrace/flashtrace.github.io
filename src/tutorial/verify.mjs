@@ -37,6 +37,7 @@ export function chapterPayload(chapter, lang) {
     id: chapter.id,
     title: chapter.title,
     group: chapter.group,
+    locked: Boolean(chapter.locked),
     intro: chapter.intro,
     goal: chapter.goal,
     docs: chapter.docs,
@@ -160,7 +161,7 @@ async function runState(bundleUrl, chapter, lang, state) {
   return {
     output,
     exitCode,
-    r: { ...analysis, exitCode, argv: state.argv, spec: state.spec, code: state.code },
+    r: { ...analysis, exitCode, argv: state.argv, files, spec: state.spec, code: state.code },
   };
 }
 

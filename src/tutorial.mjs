@@ -6,7 +6,7 @@
 // touching code or storage keys.
 import { chapters } from './tutorial/chapters.mjs';
 import { chapterPayload } from './tutorial/verify.mjs';
-import { esc, highlightTokens, pageShell } from './layout.mjs';
+import { esc, GITHUB_URL, highlightTokens, pageShell } from './layout.mjs';
 import { colorizeReport } from './report-colors.mjs';
 
 const LANG = 'js';
@@ -60,6 +60,19 @@ ${groupHtml}
 <div class="sidebar-backdrop" hidden></div>`;
 }
 
+export const LOCK_TIP = 'This chapter does not allow file management';
+
+// Server-rendered initial tab strip (chapter 1); tutorial.js re-renders it on
+// every chapter switch and tab operation with the same structure.
+function paneTabs(pane, fileName, locked, label) {
+  const lock = locked ? `<span class="tab-lock" title="${LOCK_TIP}"></span>` : '';
+  const addAttrs = locked ? ` disabled title="${LOCK_TIP}"` : ' title="New file"';
+  return `<div class="pane-tabs" id="${pane}-tabs" aria-label="${label}">
+        <div class="pane-tab is-active"><button type="button" class="tab-name" aria-current="true">${esc(fileName)}</button>${lock}</div>
+        <button type="button" class="tab-add"${addAttrs} aria-label="New file">+</button>
+      </div>`;
+}
+
 function ide(first) {
   const variant = first.variants[LANG];
   return `<div class="ide-mock ide-lg" id="ide" data-spec-file="${esc(first.spec.file)}" data-code-file="${esc(variant.file)}" data-lang="${LANG}">
@@ -70,11 +83,11 @@ function ide(first) {
   </div>
   <div class="ide-panes">
     <div class="ide-pane">
-      <div class="pane-tab" id="spec-tab">${esc(first.spec.file)}</div>
+      ${paneTabs('spec', first.spec.file, first.locked, 'Spec files')}
       <textarea id="ed-spec" class="editor" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Markdown spec editor">${esc(first.spec.body)}</textarea>
     </div>
     <div class="ide-pane">
-      <div class="pane-tab" id="code-tab">${esc(variant.file)}</div>
+      ${paneTabs('code', variant.file, first.locked, 'Code files')}
       <textarea id="ed-code" class="editor" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Code editor">${esc(variant.body)}</textarea>
     </div>
   </div>
@@ -142,6 +155,39 @@ function resumeDialog() {
 </dialog>`;
 }
 
+// Datalists double as the single client-side source of the supported
+// extensions: the pickers autocomplete from them and tutorial.js validates
+// against them. The code list is parsed from docs/code-tags.md at build time;
+// the spec list mirrors what analyzeBuffers routes to parseMarkdown.
+function fileDialogs(codeExtensions) {
+  const specExtensions = ['.md', '.markdown'];
+  const options = (exts) => exts.map((e) => `<option value="${esc(e)}"></option>`).join('');
+  return `<datalist id="ext-spec">${options(specExtensions)}</datalist>
+<datalist id="ext-code">${options(codeExtensions)}</datalist>
+<dialog class="resume-modal file-modal" id="newfile-modal" aria-labelledby="newfile-title">
+  <h2 id="newfile-title">New file</h2>
+  <div class="file-fields">
+    <label for="newfile-name">Name</label>
+    <input id="newfile-name" autocomplete="off" spellcheck="false" autocapitalize="off">
+    <label for="newfile-ext">Type</label>
+    <input id="newfile-ext" autocomplete="off" spellcheck="false" autocapitalize="off">
+  </div>
+  <p class="file-error" id="newfile-error" hidden><span id="newfile-error-text"></span> <a href="${GITHUB_URL}/issues" id="newfile-issue" hidden>Open an issue to ask for it?</a></p>
+  <div class="resume-actions">
+    <button type="button" class="btn btn-primary" id="newfile-create" disabled>Create</button>
+    <button type="button" class="btn btn-secondary" id="newfile-cancel">Cancel</button>
+  </div>
+</dialog>
+<dialog class="resume-modal" id="delfile-modal" aria-labelledby="delfile-title">
+  <h2 id="delfile-title">Delete file</h2>
+  <p id="delfile-text"></p>
+  <div class="resume-actions">
+    <button type="button" class="btn btn-primary" id="delfile-yes">Delete</button>
+    <button type="button" class="btn btn-secondary" id="delfile-cancel">Cancel</button>
+  </div>
+</dialog>`;
+}
+
 // Shown when someone lands on #editor without any completed chapter: offer
 // the guided route before leaving a newcomer alone with two empty files.
 function welcomeDialog() {
@@ -201,7 +247,7 @@ ${sections}
 </noscript>`;
 }
 
-export function renderTutorial({ version, verified }) {
+export function renderTutorial({ version, verified, codeExtensions }) {
   const first = chapters[0];
   const payloads = chapters.map((chapter) => ({
     ...chapterPayload(chapter, LANG),
@@ -230,6 +276,7 @@ ${ide(first)}
 </div>
 ${resumeDialog()}
 ${welcomeDialog()}
+${fileDialogs(codeExtensions)}
 ${fallbackChapters(verified)}
 <script type="application/json" id="tutorial-data">${dataJson}</script>
 <script type="module" src="/learn/tutorial.js"></script>

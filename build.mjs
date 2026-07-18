@@ -79,6 +79,23 @@ const pages = [
   { title: 'Overview', slug: '', file: 'index.md' },
   ...specPages,
 ];
+
+// --- supported code extensions: from docs/code-tags.md's comment-family table,
+// so a language added upstream flows into the /learn/ new-file validation on
+// the next rebuild. Only table rows are scanned - prose mentions `.git` etc.
+const codeTagsMd = readFileSync(path.join(docsDir, 'code-tags.md'), 'utf8');
+const codeExtensions = [
+  ...new Set(
+    codeTagsMd
+      .split('\n')
+      .filter((line) => line.startsWith('|'))
+      .flatMap((line) => [...line.matchAll(/`(\.[a-z0-9]+)`/g)].map((m) => m[1])),
+  ),
+];
+if (codeExtensions.length === 0) {
+  console.error('error: no extensions found in docs/code-tags.md - the table format changed?');
+  process.exit(1);
+}
 const slugByName = new Map(pages.map((p) => [p.file.replace(/\.md$/, ''), p.slug]));
 
 // --- markdown rendering ------------------------------------------------------
@@ -251,7 +268,7 @@ try {
   console.error(`error: tutorial chapter verification failed.\n${err.message}`);
   process.exit(1);
 }
-writeFileSync(path.join(learnDir, 'index.html'), renderTutorial({ version, verified }));
+writeFileSync(path.join(learnDir, 'index.html'), renderTutorial({ version, verified, codeExtensions }));
 
 const sitePaths = [
   '/',

@@ -7,13 +7,17 @@
 // the build-time identity hash):
 // - `anchors` hold regex *sources* (compiled with the 'm' flag at use time)
 // - `check`/`done` are pure self-contained arrows over the run result
-//   `r = { items, problems, clean, exitCode, argv, spec, code }`; they are
-//   shipped as their source text, so they must not close over anything
+//   `r = { items, problems, clean, exitCode, argv, files, spec, code }`; they
+//   are shipped as their source text, so they must not close over anything.
+//   In the browser `spec`/`code` join all files of the respective pane, so
+//   text-based checks keep passing when users spread work over added files
 // - `patch` ops: insertBefore | insertAfter | replaceLine | replaceMatch
 //   (anchor + snippet key), append (snippet key), setArgv (argv array);
 //   insertAfter/append prefix the snippet with '\n', so a snippet with its
 //   own leading '\n' produces a blank separator line
 // - language-specifics live in `variants` (v1: js); `spec` is neutral
+// - `locked: true` disables file management (add/delete tabs) for the chapter;
+//   its steps then always run against exactly the seeded file pair
 
 export const chapters = [
   // ------------------------------------------------------------ foundations
@@ -21,6 +25,7 @@ export const chapters = [
     id: 'first-item',
     title: 'Your first item',
     group: 'Foundations',
+    locked: true,
     intro:
       'flashtrace reads ordinary Markdown. An item is born on a line holding nothing but its ID in backticks - the heading above becomes its title, the paragraph below its description. Build one from scratch and watch the tracer pick it up.',
     goal: 'Turn the prose into a traceable item: heading, ID line, description.',
@@ -93,6 +98,7 @@ holding nothing but an ID in backticks.`,
     id: 'cover-a-need',
     title: 'Cover a requirement',
     group: 'Foundations',
+    locked: true,
     intro:
       'An item without Needs asks for nothing - the trace stays green but toothless. Demand an implementation with a Needs: list, watch the run go red, then satisfy it with a tag in an ordinary code comment.',
     goal: 'Make req:auth/login#1 demand an implementation, then provide it.',
@@ -160,6 +166,7 @@ Users must be able to log in with email and password.`,
     id: 'read-the-report',
     title: 'Read the report',
     group: 'Foundations',
+    locked: true,
     intro:
       'This trace is broken on purpose. Each defective item gets one ✘ block: its ID, location and defect bullets. Two of the three blocks here share a single root cause - a typo - and the run exits 1 until everything is fixed. Read first, then fix.',
     goal: 'Clear all three defect blocks and bring the exit code to 0.',
@@ -233,6 +240,7 @@ export function endAllSessions(user) {
     id: 'covers-and-orphans',
     title: 'Covers: & orphans',
     group: 'Foundations',
+    locked: true,
     intro:
       'Coverage can also be declared from the covering side: a Covers: entry names the item this one covers. It is only valid when the target exists and needs the coverer back - otherwise you get an orphaned or unwanted defect. Repair a broken Covers chain.',
     goal: 'Make req:auth/login#1 validly cover the auth feature.',
