@@ -51,6 +51,7 @@ export const chapters = [
       snippets: {
         heading: '## Login requirement',
         idLine: '\n\`req:auth/login#1\`',
+        description: '\nUsers must be able to log in with email and password.',
       },
     },
     variants: {
@@ -80,8 +81,17 @@ export const chapters = [
         patch: { op: 'append', snippet: 'idLine' },
         check: (r) => r.items.some((i) => Boolean(i.title)),
       },
+      {
+        title: 'Describe the item',
+        explain:
+          'Give the item a description in your own words: the paragraph right below the ID line, up to the next blank line. Everything after that stays informative prose.',
+        pane: 'spec',
+        anchor: null,
+        patch: { op: 'append', snippet: 'description' },
+        check: (r) => r.items.some((i) => Boolean(i.title) && i.description.length > 0),
+      },
     ],
-    done: (r) => r.clean && r.items.some((i) => Boolean(i.title)),
+    done: (r) => r.clean && r.items.some((i) => Boolean(i.title) && i.description.length > 0),
   },
 
   {
