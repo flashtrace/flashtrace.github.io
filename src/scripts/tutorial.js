@@ -111,6 +111,7 @@ let lastResult = null; // r-context of the latest (also silent) run
 let active = null; // { worker, watchdog, silent } of the run in flight
 let saveTimer = null;
 let checkTimer = null;
+let lastSyncedStep = null; // step the accordion was last folded to; guards manual folds
 
 // --- editor highlight overlay ------------------------------------------------
 // A transparent textarea over a highlightTokens-rendered <pre> with identical
@@ -151,6 +152,30 @@ function refreshHighlights() {
   for (const render of highlightRenderers) render();
 }
 
+// Both editors carry a native vertical resize grip, and a drag writes an inline
+// height onto that one textarea only. The grid stretches the panes to the
+// taller side, but a shorter inline height overrides the CSS fill, so dragging
+// each grip in turn would drift the two windows apart. Mirror whichever grip is
+// dragged onto the other editor so the left and right windows stay one height.
+function syncEditorHeights() {
+  if (typeof ResizeObserver === 'undefined') return;
+  const editors = [specEditor, codeEditor];
+  let shared = ''; // the height last propagated to both, as an inline string
+  const observer = new ResizeObserver(() => {
+    for (const editor of editors) {
+      const height = editor.style.height; // set by a resize drag, else ''
+      if (height && height !== shared) {
+        shared = height;
+        for (const other of editors) {
+          if (other !== editor) other.style.height = height;
+        }
+        return; // the mirrored write settles to `shared`, so no feedback loop
+      }
+    }
+  });
+  for (const editor of editors) observer.observe(editor);
+}
+
 function init() {
   // seed the pane model from the server-rendered buffers; openChapter replaces
   // it, and the bare runner (no chapter data) keeps working on exactly this
@@ -160,6 +185,7 @@ function init() {
   };
   setupHighlight(specEditor);
   setupHighlight(codeEditor);
+  syncEditorHeights();
   specEditor.addEventListener('input', () => {
     activeFile('spec').body = specEditor.value;
   });
@@ -235,7 +261,7 @@ function init() {
       setCompletedOverlay(null);
       seedBuffers();
       setText('step-progress', 'Run to check your progress.');
-      syncStepList(0);
+      syncStepList(0, true);
       renderRailMarks();
       scheduleSilentRun();
     });
@@ -589,7 +615,7 @@ function openChapter(id) {
     if (stored) restoreStored(chapter, stored);
     else seedBuffers(); // completions before buffers were kept: show the start files
     setText('step-progress', chapterCompleteText());
-    syncStepList(chapter.steps.length); // every step folded away behind its check
+    syncStepList(chapter.steps.length, true); // every step folded away behind its check
   } else if (!stored || storedPristine(chapter, stored)) {
     seedBuffers();
     scheduleSilentRun();
@@ -843,18 +869,24 @@ function renderStepList(chapter) {
         '</summary><p class="step-explain">' + esc(step.explain) + '</p></details></li>',
     )
     .join('');
-  syncStepList(0);
+  syncStepList(0, true);
 }
 
-function syncStepList(currentIndex) {
+// classes always mirror progress; the fold only snaps to the current step when
+// that step actually changes (chapter switch, real progress) or on an explicit
+// reset (force) - so background silent runs never yank a step the user opened
+// to explore back to the current one.
+function syncStepList(currentIndex, force) {
   const list = document.getElementById('step-items');
   if (!list) return;
+  const refold = force || currentIndex !== lastSyncedStep;
   Array.from(list.children).forEach((item, i) => {
     item.classList.toggle('is-done', i < currentIndex);
     item.classList.toggle('is-current', i === currentIndex);
     const details = item.querySelector('details');
-    if (details) details.open = i === currentIndex;
+    if (details && refold) details.open = i === currentIndex;
   });
+  lastSyncedStep = currentIndex;
 }
 
 // current step = index of the first failing check; users may type ahead,
