@@ -46,6 +46,11 @@ function chapterRail() {
     )
     .join('\n');
   return `<nav class="sidebar" id="sidebar" aria-label="Chapters">
+<div class="nav-group">
+  <ul>
+    <li><a href="#editor" data-chapter="editor"><span class="ch-mark" aria-hidden="true"></span>Free editor</a></li>
+  </ul>
+</div>
 ${groupHtml}
 <div class="rail-foot">
   <p class="rail-legend"><span class="ch-mark is-done" aria-hidden="true"></span> completed · <span class="ch-mark is-assisted" aria-hidden="true"></span> with assists</p>

@@ -74,6 +74,27 @@ function loadChapterData() {
 
 // --- engine state ------------------------------------------------------------
 
+// The free editor: a chapter-shaped sandbox living outside data.chapters. It
+// has no steps, goal or completion - just two empty files and the real CLI.
+// Its buffers persist under the same store as any chapter, keyed 'editor'.
+const FREE_EDITOR = {
+  id: 'editor',
+  free: true,
+  rev: 0,
+  title: 'Free editor',
+  intro:
+    'A blank project, all yours: write any spec and code and trace them with the real flashtrace release. No goals, no checks - the chapters in the rail are there whenever you want guidance.',
+  docs: [
+    { label: 'Usage Guide', href: '/docs/usage/' },
+    { label: 'Overview', href: '/docs/' },
+  ],
+  argv: [],
+  spec: { file: 'spec.md', body: '' },
+  variant: { file: 'script.js', body: '' },
+  steps: [],
+  done: () => false,
+};
+
 let data = null;
 let current = null; // active chapter object
 let currentIndex = 0;
@@ -189,7 +210,7 @@ function init() {
   renderRailMarks();
   const fromHash = window.location.hash.slice(1);
   const initial =
-    data.chapters.find((c) => c.id === fromHash) ??
+    chapterById(fromHash) ??
     data.chapters.find((c) => !progressEntry(c.id)) ??
     data.chapters[0];
   openChapter(initial.id);
@@ -202,6 +223,7 @@ function progressEntry(id) {
 // --- chapter switching -------------------------------------------------------
 
 function chapterById(id) {
+  if (id === FREE_EDITOR.id) return FREE_EDITOR;
   return data.chapters.find((c) => c.id === id) ?? null;
 }
 
@@ -230,9 +252,19 @@ function openChapter(id) {
   });
   history.replaceState(null, '', '#' + id);
 
-  // head + ide chrome
-  const no = currentIndex + 1;
-  setText('ch-kicker', 'Chapter ' + no + ' · ' + chapter.group);
+  // head + ide chrome; the free editor has no chapter number, goal or steps
+  const assistBar = document.getElementById('assist-bar');
+  if (assistBar) assistBar.hidden = Boolean(chapter.free);
+  if (chapter.free) {
+    setText('ch-kicker', 'Sandbox');
+    setText('ide-title', 'free editor');
+  } else {
+    const no = currentIndex + 1;
+    setText('ch-kicker', 'Chapter ' + no + ' · ' + chapter.group);
+    setText('ide-title', 'chapter ' + no + ' · ' + chapter.title);
+    setText('goal-text', chapter.goal);
+    setText('step-progress', 'Run to check your progress.');
+  }
   setText('ch-title', chapter.title);
   setText('ch-intro', chapter.intro);
   const docsEl = document.getElementById('ch-docs');
@@ -241,24 +273,28 @@ function openChapter(id) {
       .map((d) => '<a href="' + esc(d.href) + '">' + esc(d.label) + '</a>')
       .join(' · ');
   }
-  setText('ide-title', 'chapter ' + no + ' · ' + chapter.title);
   setText('spec-tab', chapter.spec.file);
   setText('code-tab', chapter.variant.file);
-  setText('goal-text', chapter.goal);
-  setText('step-progress', 'Run to check your progress.');
   terminal.innerHTML = '<span class="t-dim">press Run to trace the project</span>';
   closeAssist();
   for (const btn of [document.getElementById('help-btn'), document.getElementById('auto-btn')]) {
     if (btn) btn.disabled = true; // re-enabled once the first analysis lands
   }
 
-  // buffers: stored work-in-progress -> resume/start-fresh modal
+  // buffers: stored work-in-progress -> resume/start-fresh modal; the free
+  // editor is a scratchpad with no meaningful start state, so it restores
+  // silently ("Reset files" clears it)
   const stored = loadStore(BUFFERS_KEY).chapters[id];
-  if (stored && (stored.spec !== chapter.spec.body || stored.code !== chapter.variant.body)) {
-    offerResume(chapter, stored);
-  } else {
+  if (!stored || (stored.spec === chapter.spec.body && stored.code === chapter.variant.body)) {
     seedBuffers();
     scheduleSilentRun();
+  } else if (chapter.free) {
+    specEditor.value = String(stored.spec);
+    codeEditor.value = String(stored.code);
+    if (argvInput) argvInput.value = chapter.argv.join(' ');
+    refreshHighlights();
+  } else {
+    offerResume(chapter, stored);
   }
 }
 
@@ -394,7 +430,7 @@ function firstFailingIndex() {
 }
 
 function updateStepUi(fromRealRun) {
-  if (!current || !lastResult || !lastResult.items) return;
+  if (!current || current.free || !lastResult || !lastResult.items) return;
   const steps = current.steps;
   const firstFailing = firstFailingIndex();
   const solved = safeCheck(current.done, lastResult);
@@ -440,6 +476,7 @@ function finishRun() {
 }
 
 function scheduleSilentRun() {
+  if (current && current.free) return; // nothing evaluates sandbox runs in the background
   clearTimeout(checkTimer);
   checkTimer = setTimeout(() => run(true), 800);
 }
@@ -493,7 +530,7 @@ function run(silent) {
       spec: specEditor.value,
       code: codeEditor.value,
     });
-    if (current && result.analysis && !wasSilent && safeCheck(current.done, lastResult)) {
+    if (current && !current.free && result.analysis && !wasSilent && safeCheck(current.done, lastResult)) {
       completeChapter(current);
     }
     updateStepUi(!wasSilent);
