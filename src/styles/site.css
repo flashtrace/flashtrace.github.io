@@ -1391,6 +1391,11 @@ h3:hover .heading-anchor,
   margin-top: 0.9rem;
 }
 
+/* display: flex would beat the UA [hidden] rule (free-editor mode hides the bar) */
+.assist-bar[hidden] {
+  display: none;
+}
+
 .assist-goal {
   margin: 0;
   color: var(--text);
