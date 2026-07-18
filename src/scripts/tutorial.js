@@ -805,7 +805,8 @@ function completionStatement(entry) {
 // running clockwise from 12 o'clock: steps solved so far draw bold in the text
 // color, the rest stay thin and muted. Solved-step counts persist per chapter
 // under STEPS_KEY (written after every analysis) so the rings survive reloads
-// and chapter switches; a completed chapter always shows a full ring.
+// and chapter switches. Once a chapter is completed its ring gives way to
+// the ✓ check, so exactly one symbol shows per chapter.
 
 function ringPoint(radius, deg) {
   const rad = (deg * Math.PI) / 180;
@@ -853,10 +854,11 @@ function renderRailMarks() {
     const id = ring.getAttribute('data-ring');
     const total = Math.trunc(Number(ring.getAttribute('data-steps'))) || 0;
     if (total < 1) return;
-    // stale counts (e.g. a chapter shrank in a revision) clamp to the ring
-    const done = progress.chapters[id]
-      ? total
-      : Math.min(total, Math.max(0, Math.trunc(Number(steps.chapters[id])) || 0));
+    // a completed chapter hands its slot to the check; only in-progress
+    // chapters draw a ring. stale counts clamp to the ring's step total.
+    ring.hidden = Boolean(progress.chapters[id]);
+    if (ring.hidden) return;
+    const done = Math.min(total, Math.max(0, Math.trunc(Number(steps.chapters[id])) || 0));
     ring.innerHTML = ringSvg(total, done);
   });
   const legend = document.querySelector('.legend-steps');

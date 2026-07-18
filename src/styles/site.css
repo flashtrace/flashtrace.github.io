@@ -1447,6 +1447,11 @@ h3:hover .heading-anchor,
   width: 1.3rem;
 }
 
+/* the completion check takes the ring's slot once a chapter is done */
+.ch-ring[hidden] {
+  display: none;
+}
+
 .ch-ring svg {
   width: 0.85rem;
   height: 0.85rem;
@@ -1468,9 +1473,14 @@ h3:hover .heading-anchor,
 
 .ch-mark {
   display: inline-block;
-  width: 1.1rem;
+  width: 1.3rem;
   color: #3fb950;
   font-weight: 700;
+}
+
+/* only a real completion mark occupies the slot; otherwise the ring shows */
+.ch-mark:not(.is-done):not(.is-assisted) {
+  display: none;
 }
 
 .ch-mark.is-done::before {
@@ -1771,6 +1781,11 @@ h3:hover .heading-anchor,
 
 /* file dialogs (new file / delete file) */
 
+/* fixed width so the modal doesn't grow when the error line appears */
+.file-modal {
+  width: min(24rem, calc(100vw - 2rem));
+}
+
 .file-modal .file-fields {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -1804,7 +1819,8 @@ h3:hover .heading-anchor,
 .file-error {
   margin-top: 0.9rem;
   color: var(--accent-strong) !important;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
 }
 
 /* no-JS fallback */
