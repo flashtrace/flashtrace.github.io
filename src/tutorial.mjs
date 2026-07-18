@@ -127,7 +127,7 @@ function stepListItems(steps, currentIndex) {
       let state = '';
       if (i < currentIndex) state = ' class="is-done"';
       else if (i === currentIndex) state = ' class="is-current"';
-      return `<li${state}><details${i === currentIndex ? ' open' : ''}>
+      return `<li${state}><details name="chapter-steps"${i === currentIndex ? ' open' : ''}>
   <summary><span class="step-mark" aria-hidden="true"></span>${i + 1} · ${esc(step.title)}</summary>
   <p class="step-explain">${esc(step.explain)}</p>
 </details></li>`;

@@ -186,6 +186,7 @@ function init() {
     });
   }
 
+  initStepAccordion();
   data = loadChapterData();
   if (!data) return; // bare runner: Run still works on the visible buffers
 
@@ -806,8 +807,27 @@ function safeCheck(fn, r) {
 // The guidance panel between the intro and the IDE: one <details> per step,
 // rebuilt on every chapter switch and re-synced after every analysis (same
 // structure as the server-rendered chapter 1 in tutorial.mjs). Steps behind
-// the current one grey out behind a check, the current one unfolds; manual
-// unfolding is fine - the next sync restores the canonical state.
+// the current one grey out behind a check, the current one unfolds; at most
+// one step is ever unfolded (a proper accordion), and manual folding around
+// is fine - the next sync restores the canonical state.
+
+// Modern browsers make same-`name` details mutually exclusive natively; this
+// mirrors that where the attribute is unsupported. toggle does not bubble,
+// so it is captured at the list.
+function initStepAccordion() {
+  const list = document.getElementById('step-items');
+  if (!list || 'name' in document.createElement('details')) return;
+  list.addEventListener(
+    'toggle',
+    (event) => {
+      if (!event.target.open) return;
+      for (const other of list.querySelectorAll('details[open]')) {
+        if (other !== event.target) other.open = false;
+      }
+    },
+    true,
+  );
+}
 
 function renderStepList(chapter) {
   const section = document.getElementById('step-list');
@@ -818,7 +838,7 @@ function renderStepList(chapter) {
   list.innerHTML = chapter.steps
     .map(
       (step, i) =>
-        '<li><details><summary><span class="step-mark" aria-hidden="true"></span>' +
+        '<li><details name="chapter-steps"><summary><span class="step-mark" aria-hidden="true"></span>' +
         (i + 1) + ' · ' + esc(step.title) +
         '</summary><p class="step-explain">' + esc(step.explain) + '</p></details></li>',
     )
