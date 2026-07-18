@@ -1,6 +1,6 @@
 // Legal notice (Impressum) - a fully static, hand-written page. Required to be
 // reachable from every page under German law (§5 DDG); linked from the footer.
-import { esc, pageShell } from './layout.mjs';
+import { esc, EXT_ATTRS, pageShell } from './layout.mjs';
 
 export function renderImpressum({ version }) {
   const body = `<main class="section" id="main">
@@ -22,7 +22,7 @@ Email: <a href="mailto:mentorfilou@gmail.com">mentorfilou@gmail.com</a></p>
 
 <h2>Editorial responsibility</h2>
 <address>
-Lennard Solterbeck and <a href="https://github.com/orgs/flashtrace/people">the flashtrace team</a>
+Lennard Solterbeck and <a href="https://github.com/orgs/flashtrace/people"${EXT_ATTRS}>the flashtrace team</a>
 </address>
 </div>
 </main>`;
