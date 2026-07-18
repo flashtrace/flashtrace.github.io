@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import { Marked } from 'marked';
 
-import { docShell, esc, GITHUB_URL, highlightTokens, SITE_URL } from './src/layout.mjs';
+import { docShell, esc, EXT_ATTRS, GITHUB_URL, highlightTokens, SITE_URL } from './src/layout.mjs';
 import { renderLanding } from './src/landing.mjs';
 import { renderImpressum } from './src/impressum.mjs';
 import { renderLicense } from './src/license.mjs';
@@ -128,7 +128,7 @@ const marked = new Marked({
       const text = this.parser.parseInline(tokens);
       const t = title ? ` title="${esc(title)}"` : '';
       const url = rewriteHref(href);
-      const ext = /^https?:/.test(url) ? ' rel="external"' : '';
+      const ext = /^https?:/.test(url) ? EXT_ATTRS : '';
       return `<a href="${url}"${t}${ext}>${text}</a>`;
     },
     code({ text, lang }) {

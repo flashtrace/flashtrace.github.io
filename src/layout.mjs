@@ -4,6 +4,10 @@ export const SITE_URL = 'https://flashtrace.github.io';
 export const GITHUB_URL = 'https://github.com/flashtrace/flashtrace';
 export const DISCUSSIONS_URL = 'https://github.com/flashtrace/flashtrace/discussions';
 
+// Attributes for links leaving the site: open a new tab. Links that should
+// also show the "↗" marker add class="ext-mark" (styled in site.css).
+export const EXT_ATTRS = ' target="_blank" rel="external noopener"';
+
 export function esc(s) {
   return String(s)
     .replaceAll('&', '&amp;')
@@ -49,13 +53,13 @@ function topBar({ version, active, withSidebar }) {
       <img src="/logo.svg" alt="" width="22" height="22">
       <span class="brand-name">flashtrace</span>
     </a>
-    <a class="version-badge" href="${GITHUB_URL}/releases" title="flashtrace release">${esc(version)}</a>
+    <a class="version-badge" href="${GITHUB_URL}/releases"${EXT_ATTRS} title="flashtrace release">${esc(version)}</a>
     <nav class="topbar-nav" aria-label="Site">
       ${link('/', 'Home', 'home')}
       ${link('/docs/', 'Docs', 'docs')}
     </nav>
     <div class="topbar-actions">
-      <a class="icon-btn" href="${GITHUB_URL}" aria-label="flashtrace on GitHub">${githubIcon}</a>
+      <a class="icon-btn" href="${GITHUB_URL}"${EXT_ATTRS} aria-label="flashtrace on GitHub">${githubIcon}</a>
       <button class="icon-btn theme-toggle" aria-label="Toggle color theme">
         <span class="only-light">${moonIcon}</span><span class="only-dark">${sunIcon}</span>
       </button>
@@ -73,8 +77,8 @@ function footer({ version }) {
     </div>
     <nav class="footer-links" aria-label="Footer">
       <a href="/docs/">Docs</a>
-      <a href="${GITHUB_URL}">GitHub</a>
-      <a href="${DISCUSSIONS_URL}">Discussions</a>
+      <a href="${GITHUB_URL}"${EXT_ATTRS} class="ext-mark">GitHub</a>
+      <a href="${DISCUSSIONS_URL}"${EXT_ATTRS} class="ext-mark">Discussions</a>
       <a href="/license/">License</a>
       <a href="/impressum/">Legal Notice</a>
     </nav>

@@ -1,7 +1,7 @@
 // The landing page: hero with a CSS-built IDE mock, how-it-works, features,
 // curated interactive examples, install snippets. All static HTML.
 import { colorizeReport, examples, heroTerminal } from './examples.mjs';
-import { esc, GITHUB_URL, highlightTokens, pageShell } from './layout.mjs';
+import { esc, EXT_ATTRS, GITHUB_URL, highlightTokens, pageShell } from './layout.mjs';
 
 // --- hero IDE mock -----------------------------------------------------------
 
@@ -215,7 +215,7 @@ npx flashtrace" aria-label="Copy install commands">Copy</button></div>
     </div>
     <div class="install-card">
       <h3>Vendored, zero install</h3>
-      <p class="install-note">Download <a href="${rawScriptUrl}">dist/flashtrace.mjs</a> into your repository and run it directly.</p>
+      <p class="install-note">Download <a href="${rawScriptUrl}"${EXT_ATTRS} class="ext-mark">dist/flashtrace.mjs</a> into your repository and run it directly.</p>
       <div class="cmd-block"><pre><code>node flashtrace.mjs</code></pre><button class="copy-btn" data-copy="node flashtrace.mjs" aria-label="Copy run command">Copy</button></div>
     </div>
   </div>
@@ -233,7 +233,7 @@ export function renderLanding({ version, gitRef }) {
     <p class="hero-sub">flashtrace verifies that every requirement in your Markdown specs is covered by the code and tests it demands - with zero runtime dependencies, anywhere Node.js runs.</p>
     <div class="hero-ctas">
       <a class="btn btn-primary" href="/docs/">Get started</a>
-      <a class="btn btn-secondary" href="${GITHUB_URL}">View on GitHub</a>
+      <a class="btn btn-secondary" href="${GITHUB_URL}"${EXT_ATTRS}>View on GitHub</a>
     </div>
   </div>
   ${ideMock()}

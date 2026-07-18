@@ -118,6 +118,14 @@ a:hover {
   text-decoration: underline;
 }
 
+/* Opt-in "↗" marker for external links; the arrow-worthy ones add this class
+   next to EXT_ATTRS (\FE0E forces text over emoji presentation). */
+.ext-mark::after {
+  content: '\2197\FE0E';
+  font-size: 0.75em;
+  margin-left: 0.15em;
+}
+
 img {
   max-width: 100%;
 }
