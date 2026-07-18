@@ -22,7 +22,7 @@ Email: <a href="mailto:mentorfilou@gmail.com">mentorfilou@gmail.com</a></p>
 
 <h2>Editorial responsibility</h2>
 <address>
-Lennard Solterbeck and <a href="https://github.com/orgs/flashtrace/people"${EXT_ATTRS}>the flashtrace team</a>
+Lennard Solterbeck and <a href="https://github.com/orgs/flashtrace/people"${EXT_ATTRS} class="ext-mark">the flashtrace team</a>
 </address>
 </div>
 </main>`;

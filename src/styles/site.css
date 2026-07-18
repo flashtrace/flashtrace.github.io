@@ -118,9 +118,9 @@ a:hover {
   text-decoration: underline;
 }
 
-/* External links carry rel="external" and open in a new tab; mark all but
-   icon-only ones with "↗" (\FE0E forces text over emoji presentation). */
-a[rel~='external']:not(.icon-btn)::after {
+/* Opt-in "↗" marker for external links; the arrow-worthy ones add this class
+   next to EXT_ATTRS (\FE0E forces text over emoji presentation). */
+.ext-mark::after {
   content: '\2197\FE0E';
   font-size: 0.75em;
   margin-left: 0.15em;

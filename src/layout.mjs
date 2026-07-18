@@ -4,8 +4,8 @@ export const SITE_URL = 'https://flashtrace.github.io';
 export const GITHUB_URL = 'https://github.com/flashtrace/flashtrace';
 export const DISCUSSIONS_URL = 'https://github.com/flashtrace/flashtrace/discussions';
 
-// Attributes for links leaving the site: open a new tab, and rel="external"
-// lets site.css append the "↗" marker (icon-only links are excluded there).
+// Attributes for links leaving the site: open a new tab. Links that should
+// also show the "↗" marker add class="ext-mark" (styled in site.css).
 export const EXT_ATTRS = ' target="_blank" rel="external noopener"';
 
 export function esc(s) {
@@ -77,8 +77,8 @@ function footer({ version }) {
     </div>
     <nav class="footer-links" aria-label="Footer">
       <a href="/docs/">Docs</a>
-      <a href="${GITHUB_URL}"${EXT_ATTRS}>GitHub</a>
-      <a href="${DISCUSSIONS_URL}"${EXT_ATTRS}>Discussions</a>
+      <a href="${GITHUB_URL}"${EXT_ATTRS} class="ext-mark">GitHub</a>
+      <a href="${DISCUSSIONS_URL}"${EXT_ATTRS} class="ext-mark">Discussions</a>
       <a href="/license/">License</a>
       <a href="/impressum/">Legal Notice</a>
     </nav>

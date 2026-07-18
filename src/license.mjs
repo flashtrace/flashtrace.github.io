@@ -31,7 +31,7 @@ ${col('Permissions', 'lic-ok', checkIcon, ['Commercial use', 'Modification', 'Di
 ${col('Limitations', 'lic-no', xIcon, ['Trademark use', 'Liability', 'Warranty'])}
 ${col('Conditions', 'lic-info', infoIcon, ['License and copyright notice', 'State changes'])}
 </div>
-<p class="license-summary-note">This is not legal advice. <a href="https://choosealicense.com/licenses/apache-2.0/"${EXT_ATTRS}>Learn more about the Apache License 2.0</a>.</p>
+<p class="license-summary-note">This is not legal advice. <a href="https://choosealicense.com/licenses/apache-2.0/"${EXT_ATTRS} class="ext-mark">Learn more about the Apache License 2.0</a>.</p>
 </section>`;
 }
 

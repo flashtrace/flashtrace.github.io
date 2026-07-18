@@ -215,7 +215,7 @@ npx flashtrace" aria-label="Copy install commands">Copy</button></div>
     </div>
     <div class="install-card">
       <h3>Vendored, zero install</h3>
-      <p class="install-note">Download <a href="${rawScriptUrl}"${EXT_ATTRS}>dist/flashtrace.mjs</a> into your repository and run it directly.</p>
+      <p class="install-note">Download <a href="${rawScriptUrl}"${EXT_ATTRS} class="ext-mark">dist/flashtrace.mjs</a> into your repository and run it directly.</p>
       <div class="cmd-block"><pre><code>node flashtrace.mjs</code></pre><button class="copy-btn" data-copy="node flashtrace.mjs" aria-label="Copy run command">Copy</button></div>
     </div>
   </div>
