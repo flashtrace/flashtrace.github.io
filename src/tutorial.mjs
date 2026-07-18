@@ -172,7 +172,7 @@ function fileDialogs(codeExtensions) {
     <label for="newfile-ext">Type</label>
     <input id="newfile-ext" autocomplete="off" spellcheck="false" autocapitalize="off">
   </div>
-  <p class="file-error" id="newfile-error" hidden><span id="newfile-error-text"></span> <a href="${GITHUB_URL}/issues" id="newfile-issue" hidden>Open an issue to ask for it?</a></p>
+  <p class="file-error" id="newfile-error" hidden><span id="newfile-error-text"></span> <a href="${GITHUB_URL}/issues/new?template=3-language-support-request.yml" id="newfile-issue" hidden>Open an issue to ask for it?</a></p>
   <div class="resume-actions">
     <button type="button" class="btn btn-primary" id="newfile-create" disabled>Create</button>
     <button type="button" class="btn btn-secondary" id="newfile-cancel">Cancel</button>
