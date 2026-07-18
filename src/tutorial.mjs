@@ -86,6 +86,14 @@ function ide(first) {
     </div>
     <pre class="term-body term-lg" aria-live="polite"><code id="term-out"><span class="t-dim">press Run to trace the project</span></code></pre>
   </div>
+  <div class="done-overlay" id="done-overlay" hidden>
+    <div class="done-card" role="status">
+      <span class="done-check" aria-hidden="true">✓</span>
+      <p class="done-title">Chapter complete</p>
+      <p class="done-text" id="done-text"></p>
+      <button type="button" class="btn btn-secondary" id="done-reset" title="Forget this completion and restore the start files">Reset chapter</button>
+    </div>
+  </div>
   <div class="spotlight" id="spotlight" hidden><div class="spotlight-hole" id="spotlight-hole"></div></div>
   <div class="assist-pop" id="assist-pop" role="dialog" aria-label="Step help" tabindex="-1" hidden>
     <button type="button" class="assist-close" id="assist-close" aria-label="Dismiss help">✕</button>

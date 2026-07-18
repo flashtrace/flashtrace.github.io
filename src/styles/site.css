@@ -1547,6 +1547,76 @@ h3:hover .heading-anchor,
   font-size: 0.85rem;
 }
 
+/* completed-chapter overlay: the solved IDE stays visible but blurred */
+
+.done-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgb(20 18 16 / 0.35);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+/* display: flex would beat the UA [hidden] rule */
+.done-overlay[hidden] {
+  display: none;
+}
+
+.done-card {
+  max-width: 24rem;
+  padding: 1.6rem 2rem;
+  border: 1px solid #44403c;
+  border-radius: 10px;
+  background: #26221f;
+  color: #e7e5e4;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.done-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  background: #3fb950;
+  color: #1e1e1e;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.done-title {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 1.1rem;
+  font-weight: 650;
+}
+
+.done-text {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: #a8a29e;
+}
+
+/* the card sits in the always-dark IDE - fix the button to dark values */
+.done-card .btn-secondary {
+  border-color: #57534e;
+  background: #2a2724;
+  color: #d4d4d4;
+  font-size: 0.85rem;
+  padding: 0.45rem 1rem;
+}
+
+.done-card .btn-secondary:hover {
+  border-color: var(--accent);
+  background: #2a2724;
+}
+
 /* resume modal */
 
 .resume-modal {

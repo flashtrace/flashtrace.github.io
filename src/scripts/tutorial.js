@@ -202,6 +202,21 @@ function init() {
     });
   }
 
+  const doneReset = document.getElementById('done-reset');
+  if (doneReset) {
+    doneReset.addEventListener('click', () => {
+      if (!current || current.free) return;
+      if (!window.confirm("Reset this chapter? Its completion and solved files are forgotten and the start files restored.")) return;
+      deleteProgressEntry(current.id);
+      deleteBufferEntry(current.id);
+      setCompletedOverlay(null);
+      seedBuffers();
+      setText('step-progress', 'Run to check your progress.');
+      renderRailMarks();
+      scheduleSilentRun();
+    });
+  }
+
   window.addEventListener('hashchange', () => {
     const id = window.location.hash.slice(1);
     if (current && id && id !== current.id) openChapter(id);
@@ -304,21 +319,32 @@ function openChapter(id) {
     if (btn) btn.disabled = true; // re-enabled once the first analysis lands
   }
 
-  // buffers: stored work-in-progress -> resume/start-fresh modal; the free
-  // editor is a scratchpad with no meaningful start state, so it restores
-  // silently ("Reset files" clears it)
+  // buffers: a finished chapter silently restores its solved files behind the
+  // completed overlay (no resume modal); stored work-in-progress elsewhere ->
+  // resume/start-fresh modal; the free editor is a scratchpad with no
+  // meaningful start state, so it restores silently ("Reset files" clears it)
+  const entry = chapter.free ? null : progressEntry(id);
   const stored = loadStore(BUFFERS_KEY).chapters[id];
-  if (!stored || (stored.spec === chapter.spec.body && stored.code === chapter.variant.body)) {
+  setCompletedOverlay(entry);
+  if (entry) {
+    if (stored) restoreStored(chapter, stored);
+    else seedBuffers(); // completions before buffers were kept: show the start files
+    setText('step-progress', chapterCompleteText());
+  } else if (!stored || (stored.spec === chapter.spec.body && stored.code === chapter.variant.body)) {
     seedBuffers();
     scheduleSilentRun();
   } else if (chapter.free) {
-    specEditor.value = String(stored.spec);
-    codeEditor.value = String(stored.code);
-    if (argvInput) argvInput.value = chapter.argv.join(' ');
-    refreshHighlights();
+    restoreStored(chapter, stored);
   } else {
     offerResume(chapter, stored);
   }
+}
+
+function restoreStored(chapter, stored) {
+  specEditor.value = String(stored.spec);
+  codeEditor.value = String(stored.code);
+  if (argvInput) argvInput.value = chapter.argv.join(' ');
+  refreshHighlights();
 }
 
 function setText(id, text) {
@@ -329,10 +355,7 @@ function setText(id, text) {
 function offerResume(chapter, stored) {
   const modal = document.getElementById('resume-modal');
   const resume = () => {
-    specEditor.value = String(stored.spec);
-    codeEditor.value = String(stored.code);
-    if (argvInput) argvInput.value = chapter.argv.join(' ');
-    refreshHighlights();
+    restoreStored(chapter, stored);
     scheduleSilentRun();
   };
   if (!modal || typeof modal.showModal !== 'function') {
@@ -403,16 +426,51 @@ function deleteBufferEntry(id) {
 function completeChapter(chapter) {
   const store = loadStore(PROGRESS_KEY);
   if (store.chapters[chapter.id]) return;
-  store.chapters[chapter.id] = {
+  const entry = {
     title: chapter.title,
     rev: chapter.rev,
     lang: data.lang,
     completedAt: new Date().toISOString(),
     assists: { help: assists.help, auto: assists.auto },
   };
+  store.chapters[chapter.id] = entry;
   saveStore(PROGRESS_KEY, store);
-  deleteBufferEntry(chapter.id);
+  saveBuffers(); // keep the solved files - revisits restore them under the overlay
+  clearTimeout(checkTimer);
   renderRailMarks();
+  setCompletedOverlay(entry);
+}
+
+function deleteProgressEntry(id) {
+  const store = loadStore(PROGRESS_KEY);
+  delete store.chapters[id];
+  saveStore(PROGRESS_KEY, store);
+}
+
+// --- completed-chapter overlay -----------------------------------------------
+// A finished chapter shows its solved files blurred behind a check card saying
+// when and how it was completed; everything else inside the IDE goes inert
+// until "Reset chapter". Pass null to hide the overlay again.
+
+function setCompletedOverlay(entry) {
+  const overlay = document.getElementById('done-overlay');
+  if (!overlay) return;
+  overlay.hidden = !entry;
+  for (const child of ide.children) {
+    if (child !== overlay) child.inert = Boolean(entry);
+  }
+  if (entry) setText('done-text', completionStatement(entry));
+}
+
+function completionStatement(entry) {
+  const help = entry.assists ? entry.assists.help : 0;
+  const auto = entry.assists ? entry.assists.auto : 0;
+  const how = [];
+  if (help) how.push(help + (help === 1 ? ' hint' : ' hints'));
+  if (auto) how.push(auto + (auto === 1 ? ' auto-solved step' : ' auto-solved steps'));
+  return (
+    'Completed ' + relativeTime(entry.completedAt) + (how.length ? ' with ' + how.join(' and ') : ' without assists') + '.'
+  );
 }
 
 function renderRailMarks() {
@@ -430,6 +488,11 @@ function renderRailMarks() {
   });
   const reset = document.getElementById('reset-progress');
   if (reset) reset.hidden = !any;
+}
+
+function chapterCompleteText() {
+  const next = data.chapters[currentIndex + 1];
+  return 'Chapter complete ✓' + (next ? ' - up next: ' + (currentIndex + 2) + ' · ' + next.title : ' - that was the last one!');
 }
 
 // --- step evaluation ---------------------------------------------------------
@@ -462,11 +525,7 @@ function updateStepUi(fromRealRun) {
   }
   const completed = Boolean(progressEntry(current.id));
   if (solved && (completed || fromRealRun)) {
-    const next = data.chapters[currentIndex + 1];
-    setText(
-      'step-progress',
-      'Chapter complete ✓' + (next ? ' - up next: ' + (currentIndex + 2) + ' · ' + next.title : ' - that was the last one!'),
-    );
+    setText('step-progress', chapterCompleteText());
   } else if (firstFailing >= steps.length) {
     setText('step-progress', solved ? 'All steps done - Run to finish the chapter.' : 'All steps done.');
   } else {
