@@ -43,7 +43,7 @@ function topBar({ version, active, withSidebar }) {
       ${link('/docs/', 'Docs', 'docs')}
     </nav>
     <div class="topbar-actions">
-      <a class="btn btn-primary btn-cta" href="/try/"${active === 'tutorial' ? ' aria-current="page"' : ''}>Try it</a>
+      <a class="btn btn-primary btn-cta" href="/try/"${active === 'tutorial' ? ' aria-current="page"' : ''}>Try it out</a>
       <a class="icon-btn" href="${GITHUB_URL}"${EXT_ATTRS} aria-label="flashtrace on GitHub">${githubIcon}</a>
       <button class="icon-btn theme-toggle" aria-label="Toggle color theme">
         <span class="only-light">${moonIcon}</span><span class="only-dark">${sunIcon}</span>
