@@ -1629,6 +1629,12 @@ h3:hover .heading-anchor,
   tab-size: 2;
 }
 
+/* the base `code { font-size: 0.9em }` shrinks the highlight text below the
+   textarea's, desyncing glyph widths and drifting the caret rightwards */
+.editor-highlight code {
+  font: inherit;
+}
+
 .ide-lg .term-lg {
   min-height: 11rem;
   max-height: 22rem;
