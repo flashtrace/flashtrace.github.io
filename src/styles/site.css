@@ -529,6 +529,21 @@ button {
 
 .ide-pane {
   min-width: 0;
+  /* column so the editor fills the pane; the grid stretches both panes to the
+     taller one, so whichever side is resized taller drives both to one height */
+  display: flex;
+  flex-direction: column;
+}
+
+/* the editor (no-JS) or its highlight wrap (JS overlay) grows to fill the pane,
+   keeping the left and right windows the same height */
+.ide-pane > .editor,
+.ide-pane > .editor-wrap {
+  flex: 1 1 auto;
+}
+
+.ide-pane > .editor-wrap > .editor {
+  height: 100%;
 }
 
 .ide-pane + .ide-pane {
