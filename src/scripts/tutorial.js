@@ -212,6 +212,7 @@ function init() {
       setCompletedOverlay(null);
       seedBuffers();
       setText('step-progress', 'Run to check your progress.');
+      syncStepList(0);
       renderRailMarks();
       scheduleSilentRun();
     });
@@ -293,6 +294,7 @@ function openChapter(id) {
   // head + ide chrome; the free editor has no chapter number, goal or steps
   const assistBar = document.getElementById('assist-bar');
   if (assistBar) assistBar.hidden = Boolean(chapter.free);
+  renderStepList(chapter);
   if (chapter.free) {
     setText('ch-kicker', 'Sandbox');
     setText('ide-title', 'free editor');
@@ -330,7 +332,8 @@ function openChapter(id) {
     if (stored) restoreStored(chapter, stored);
     else seedBuffers(); // completions before buffers were kept: show the start files
     setText('step-progress', chapterCompleteText());
-  } else if (!stored || (stored.spec === chapter.spec.body && stored.code === chapter.variant.body)) {
+    syncStepList(chapter.steps.length); // every step folded away behind its check
+  } else if (!stored || storedPristine(chapter, stored)) {
     seedBuffers();
     scheduleSilentRun();
   } else if (chapter.free) {
@@ -505,6 +508,41 @@ function safeCheck(fn, r) {
   }
 }
 
+// --- step accordion ----------------------------------------------------------
+// The guidance panel between the intro and the IDE: one <details> per step,
+// rebuilt on every chapter switch and re-synced after every analysis (same
+// structure as the server-rendered chapter 1 in tutorial.mjs). Steps behind
+// the current one grey out behind a check, the current one unfolds; manual
+// unfolding is fine - the next sync restores the canonical state.
+
+function renderStepList(chapter) {
+  const section = document.getElementById('step-list');
+  const list = document.getElementById('step-items');
+  if (!section || !list) return;
+  section.hidden = Boolean(chapter.free);
+  if (section.hidden) return;
+  list.innerHTML = chapter.steps
+    .map(
+      (step, i) =>
+        '<li><details><summary><span class="step-mark" aria-hidden="true"></span>' +
+        (i + 1) + ' · ' + esc(step.title) +
+        '</summary><p class="step-explain">' + esc(step.explain) + '</p></details></li>',
+    )
+    .join('');
+  syncStepList(0);
+}
+
+function syncStepList(currentIndex) {
+  const list = document.getElementById('step-items');
+  if (!list) return;
+  Array.from(list.children).forEach((item, i) => {
+    item.classList.toggle('is-done', i < currentIndex);
+    item.classList.toggle('is-current', i === currentIndex);
+    const details = item.querySelector('details');
+    if (details) details.open = i === currentIndex;
+  });
+}
+
 // current step = index of the first failing check; users may type ahead,
 // paste solutions or re-break earlier steps - this always re-converges
 function firstFailingIndex() {
@@ -531,6 +569,7 @@ function updateStepUi(fromRealRun) {
   } else {
     setText('step-progress', 'Step ' + (firstFailing + 1) + ' of ' + steps.length);
   }
+  syncStepList(firstFailing);
   document.dispatchEvent(
     new CustomEvent('flashtrace:steps', {
       detail: { chapter: current.id, firstFailing, solved, fromRealRun },

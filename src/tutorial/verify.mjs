@@ -44,6 +44,7 @@ export function chapterPayload(chapter, lang) {
     spec: chapter.spec,
     variant: { lang, ...chapter.variants[lang] },
     steps: chapter.steps.map((step) => ({
+      title: step.title,
       explain: step.explain,
       pane: step.pane,
       anchor: step.anchor,

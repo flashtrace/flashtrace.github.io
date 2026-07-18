@@ -55,6 +55,7 @@ holding nothing but an ID in backticks.`,
     },
     steps: [
       {
+        title: 'Add a heading',
         explain:
           'Start with a heading at the end of the spec: "## Login requirement". It is not an item yet - but the heading directly above an ID line becomes that item\'s title.',
         pane: 'spec',
@@ -63,6 +64,7 @@ holding nothing but an ID in backticks.`,
         check: (r) => /^## Login requirement$/m.test(r.spec),
       },
       {
+        title: 'Lay down the ID line',
         explain:
           'Now the item itself: a line containing nothing but `req:auth/login#1` in backticks. Run it - the summary jumps from 0 items to 1, titled by your heading.',
         pane: 'spec',
@@ -71,6 +73,7 @@ holding nothing but an ID in backticks.`,
         check: (r) => r.items.some((i) => i.id === 'req:auth/login#1' && i.title === 'Login requirement'),
       },
       {
+        title: 'Describe the item',
         explain:
           'Give the item a description: the paragraph right below the ID line, up to the next blank line. Everything after that stays informative prose.',
         pane: 'spec',
@@ -129,6 +132,7 @@ Users must be able to log in with email and password.`,
     },
     steps: [
       {
+        title: 'Demand an implementation',
         explain:
           'Add "Needs: impl:auth/login#1" below the description. Run it: the requirement turns defective - uncovered - because nothing defines that ID yet. That red is the whole point of tracing.',
         pane: 'spec',
@@ -137,6 +141,7 @@ Users must be able to log in with email and password.`,
         check: (r) => r.items.some((i) => i.id === 'req:auth/login#1' && i.needs.includes('impl:auth/login#1')),
       },
       {
+        title: 'Cover it from the code',
         explain:
           'Cover it from the code: put the comment "// [impl:auth/login#1]" directly above the login function. A tag in a comment defines the item that satisfies the need.',
         pane: 'code',
@@ -199,6 +204,7 @@ export function endAllSessions(user) {
     },
     steps: [
       {
+        title: 'Fix the typo in the code tag',
         explain:
           'The report pairs an "uncovered: needs impl:auth/logout#1" with an "unwanted: no item needs impl:auth/logut#1" - spot the missing letter. Fix the typo in the code tag and both blocks disappear together.',
         pane: 'code',
@@ -208,6 +214,7 @@ export function endAllSessions(user) {
           r.items.some((i) => i.id === 'impl:auth/logout#1') && !r.items.some((i) => i.id === 'impl:auth/logut#1'),
       },
       {
+        title: 'Extend the Needs list',
         explain:
           'impl:auth/session#1 is still unwanted: it exists, but no item needs it. Coverage nobody asked for is a defect too. Extend the Needs list so the requirement demands it.',
         pane: 'spec',
@@ -271,6 +278,7 @@ Covers: feat:auth#2`,
     },
     steps: [
       {
+        title: 'Fix the orphaned Covers',
         explain:
           'The requirement covers feat:auth#2 - which does not exist. The report even hints that feat:auth exists at revision 1. An orphaned Covers points into the void; fix the revision.',
         pane: 'spec',
@@ -282,6 +290,7 @@ Covers: feat:auth#2`,
         },
       },
       {
+        title: 'Close the loop',
         explain:
           'Still not ok: now the Covers is unwanted, because feat:auth#1 never asked for it. A Covers entry is only valid when the target lists the coverer in its own Needs. Close the loop on the feature item.',
         pane: 'spec',
@@ -339,6 +348,7 @@ export function login(email, password, oneTimeCode) {
     },
     steps: [
       {
+        title: 'Chase the revision',
         explain:
           'The report hints: "revision mismatch: existing revision(s) of impl:auth/login: 2.1". Bump the need to #2 and run again - still uncovered! 2 and 2.1 are different identities; matching never loosens by itself.',
         pane: 'spec',
@@ -353,6 +363,7 @@ export function login(email, password, oneTimeCode) {
           ),
       },
       {
+        title: 'Opt into a wildcard',
         explain:
           'When you genuinely mean "any 2.x rework", opt in explicitly with a wildcard: impl:auth/login#2.x accepts 2.0, 2.1, 2.99 - but never 2 or 2.1.3, since a wildcard keeps the layer count.',
         pane: 'spec',
@@ -411,6 +422,7 @@ export function login(email, password) {
     },
     steps: [
       {
+        title: 'Write the test',
         explain:
           'The demand tag makes the implementation uncovered, which leaves the requirement at ~ shallow-covered: its own need is met, but the chain below is broken. Write the test - then run it. Still not ok: code alone means nothing to the tracer.',
         pane: 'code',
@@ -419,6 +431,7 @@ export function login(email, password) {
         check: (r) => /test\(/.test(r.code),
       },
       {
+        title: 'Tag the test',
         explain:
           'Only the tag counts: put "// [utest:auth/login#1]" above the test. It defines the demanded item, the chain closes, and every mark flips to ✔ deep-covered.',
         pane: 'code',
@@ -478,6 +491,7 @@ export function openSession(token) {
     },
     steps: [
       {
+        title: 'Delegate to the design',
         explain:
           'There is no impl:login#1 and there never will be - the auth design owns the details. Replace the Needs line with the forwarding tag [req:login#1 --> dsn:auth#2]: the requirement now follows the design\'s coverage, shown as a → edge in the report.',
         pane: 'spec',
@@ -539,6 +553,7 @@ export function login(email, password) {
     },
     steps: [
       {
+        title: 'Scope the run with -t',
         explain:
           'Add "-t auth" to the command line in the terminal bar: only Markdown items tagged auth are imported, the reporting item stays out, and this slice traces clean. (Add "_" to a -t list to also include untagged items.)',
         pane: 'argv',
@@ -639,6 +654,7 @@ test('login opens a session', () => {
     },
     steps: [
       {
+        title: 'Drop the stray demand',
         explain:
           'Start with the problem: a [>>...] demand tag with no item tag anywhere above it is an error - it has nothing to attach to. This stray TODO block has to go.',
         pane: 'code',
@@ -647,6 +663,7 @@ test('login opens a session', () => {
         check: (r) => r.problems.length === 0,
       },
       {
+        title: 'Fix the sessions revision',
         explain:
           'The session-limit requirement needs impl:auth/sessions#1, but the code tag says #2 - and #2 is unwanted on top. The spec is right here; fix the code tag\'s revision.',
         pane: 'code',
@@ -655,6 +672,7 @@ test('login opens a session', () => {
         check: (r) => r.items.some((i) => i.id === 'impl:auth/sessions#1'),
       },
       {
+        title: 'Repair the Covers entry',
         explain: 'An old friend: the Covers entry names feat:auth#2, but the feature lives at revision 1.',
         pane: 'spec',
         anchor: 'coversLine',
@@ -662,6 +680,7 @@ test('login opens a session', () => {
         check: (r) => r.items.every((i) => i.defects.every((d) => !d.startsWith('orphaned'))),
       },
       {
+        title: 'Delete the duplicate item',
         explain:
           'req:auth/session-limit#1 is defined twice - every full ID must be unique. Delete the leftover copy at the bottom of the spec.',
         pane: 'spec',
@@ -670,6 +689,7 @@ test('login opens a session', () => {
         check: (r) => r.items.every((i) => i.defects.every((d) => !d.startsWith('duplicate'))),
       },
       {
+        title: 'Write the login test',
         explain: 'One uncovered need left: the login test. You wrote this one in the deep-coverage chapter.',
         pane: 'code',
         anchor: null,
@@ -733,6 +753,7 @@ test('login opens a session', () => {
     },
     steps: [
       {
+        title: 'Bullet the Needs list',
         explain:
           'Rewrite the inline Needs list as a bullet list: "Needs:" on its own line, one "- id" per line below it. Run it - the trace is unchanged; both styles mean the same (just never mix them within one keyword).',
         pane: 'spec',
@@ -743,6 +764,7 @@ test('login opens a session', () => {
           r.items.some((i) => i.id === 'req:auth/login#1' && i.needs.length === 2),
       },
       {
+        title: 'Add a keyword table',
         explain:
           'Add the feature as a table-driven item: a column headed "Needs" (no colon) contributes each row\'s cell as one entry, and the "Tags" column tags the item - here with auth, ready for a -t run.',
         pane: 'spec',
@@ -808,6 +830,7 @@ test('login opens a session', () => {
     },
     steps: [
       {
+        title: 'Pin the demand explicitly',
         explain:
           'Under utest:auth/login#1 the -v report says "wanted by impl:auth/audit#1" - the audit tag stole the demand, so the *audit* code claims the login test. Replace the implicit tag with the explicit form [impl:auth/login#1 >> utest:auth/login#1]; it stays attached no matter what is inserted above.',
         pane: 'code',

@@ -103,6 +103,33 @@ function ide(first) {
 </div>`;
 }
 
+// Step accordion between the chapter intro and the IDE: one <details> per
+// step, the current one unfolded, finished ones greyed out with a check.
+// Server-renders chapter 1's start state (step 1 current); tutorial.js
+// re-renders the items on every chapter switch and re-syncs the open/done
+// state after every run with the same structure.
+function stepListItems(steps, currentIndex) {
+  return steps
+    .map((step, i) => {
+      let state = '';
+      if (i < currentIndex) state = ' class="is-done"';
+      else if (i === currentIndex) state = ' class="is-current"';
+      return `<li${state}><details${i === currentIndex ? ' open' : ''}>
+  <summary><span class="step-mark" aria-hidden="true"></span>${i + 1} · ${esc(step.title)}</summary>
+  <p class="step-explain">${esc(step.explain)}</p>
+</details></li>`;
+    })
+    .join('\n');
+}
+
+function stepList(first) {
+  return `<section class="step-list" id="step-list" aria-label="Steps of this chapter">
+<ol id="step-items">
+${stepListItems(first.steps, 0)}
+</ol>
+</section>`;
+}
+
 function resumeDialog() {
   return `<dialog class="resume-modal" id="resume-modal" aria-labelledby="resume-title">
   <h2 id="resume-title">Work in progress</h2>
@@ -151,6 +178,9 @@ function fallbackChapters(verified) {
       return `<section class="tutorial-fallback" id="${esc(chapter.id)}">
   <h2>${index + 1} · ${esc(chapter.title)}</h2>
   <p>${esc(chapter.intro)}</p>
+  <ol class="fallback-steps">
+    ${chapter.steps.map((step) => `<li><strong>${esc(step.title)}.</strong> ${esc(step.explain)}</li>`).join('\n    ')}
+  </ol>
   <div class="ex-files">
     ${miniWindow(chapter.spec.file, highlightTokens(esc(chapter.spec.body)))}
     ${miniWindow(variant.file, highlightTokens(esc(variant.body)))}
@@ -165,7 +195,7 @@ function fallbackChapters(verified) {
     })
     .join('\n');
   return `<noscript>
-<style>#ide, .assist-bar, .tutorial-head-live { display: none; }</style>
+<style>#ide, .assist-bar, .tutorial-head-live, #step-list { display: none; }</style>
 <p class="tutorial-nojs">The interactive editor needs JavaScript. Below are all chapters read-only, with their inputs and real captured runs.</p>
 ${sections}
 </noscript>`;
@@ -188,6 +218,7 @@ ${chapterRail()}
   <p class="ch-intro" id="ch-intro">${esc(first.intro)}</p>
   <p class="ch-docs">Read more: <span id="ch-docs">${docsLinks(first)}</span></p>
 </section>
+${stepList(first)}
 ${ide(first)}
 <div class="assist-bar" id="assist-bar">
   <p class="assist-goal"><strong>Goal:</strong> <span id="goal-text">${esc(first.goal)}</span></p>
