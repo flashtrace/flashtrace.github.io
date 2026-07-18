@@ -109,6 +109,7 @@ let currentIndex = 0;
 // of close buttons and a disabled "+".
 let panes = null; // { spec: { files: [{ name, body }], active }, code: { ... } }
 let assists = { help: 0, auto: 0 }; // in-memory per chapter visit
+let assistedSteps = new Set(); // step indices solved with an assist, current chapter
 let lastResult = null; // r-context of the latest (also silent) run
 let active = null; // { worker, watchdog, silent } of the run in flight
 let saveTimer = null;
@@ -568,6 +569,7 @@ function openChapter(id) {
   current = chapter;
   currentIndex = data.chapters.indexOf(chapter);
   assists = { help: 0, auto: 0 };
+  assistedSteps = new Set(loadStepEntry(loadStore(STEPS_KEY), id).assisted);
   lastResult = null;
 
   // rail + url
@@ -802,20 +804,23 @@ function completionStatement(entry) {
 
 // --- rail progress rings -----------------------------------------------------
 // Each chapter link carries a small SVG donut split into one arc per step,
-// running clockwise from 12 o'clock: steps solved so far draw bold in the text
-// color, the rest stay thin and muted. Solved-step counts persist per chapter
-// under STEPS_KEY (written after every analysis) so the rings survive reloads
-// and chapter switches. Once a chapter is completed its ring gives way to
-// the ✓ check, so exactly one symbol shows per chapter.
+// running clockwise from 12 o'clock: steps solved so far draw bold, the rest
+// stay thin and muted. A step the user cleared themselves draws green; one
+// finished with an assist ("Do the next step for me" / a hint) draws amber.
+// Per-chapter progress persists under STEPS_KEY ({ done, assisted } written
+// after every analysis) so the rings survive reloads and chapter switches.
+// Once a chapter is completed its ring gives way to the ✓ check, so exactly
+// one symbol shows per chapter.
 
 function ringPoint(radius, deg) {
   const rad = (deg * Math.PI) / 180;
   return (8 + radius * Math.sin(rad)).toFixed(2) + ' ' + (8 - radius * Math.cos(rad)).toFixed(2);
 }
 
-function ringSvg(total, done) {
+function ringSvg(total, done, assisted) {
   const radius = 6.25;
-  const cls = (i) => 'seg' + (i < done ? ' is-done' : '');
+  const cls = (i) =>
+    'seg' + (i < done ? (assisted && assisted.has(i) ? ' is-done is-assisted' : ' is-done') : '');
   let body;
   if (total === 1) {
     body = '<circle class="' + cls(0) + '" cx="8" cy="8" r="' + radius + '"/>';
@@ -832,11 +837,33 @@ function ringSvg(total, done) {
   return '<svg viewBox="0 0 16 16">' + body + '</svg>';
 }
 
+// normalize a STEPS_KEY entry to { done, assisted }; legacy entries stored a
+// bare solved-step count, which maps onto an all-self (no-assist) chapter
+function loadStepEntry(store, id) {
+  const raw = store.chapters[id];
+  if (typeof raw === 'number') return { done: Math.max(0, Math.trunc(raw) || 0), assisted: [] };
+  if (raw && typeof raw === 'object') {
+    const done = Math.max(0, Math.trunc(Number(raw.done)) || 0);
+    const assisted = Array.isArray(raw.assisted)
+      ? [...new Set(raw.assisted.map((n) => Math.trunc(Number(n))).filter((n) => Number.isFinite(n) && n >= 0))]
+      : [];
+    return { done, assisted };
+  }
+  return { done: 0, assisted: [] };
+}
+
 function saveStepProgress(id, done) {
   const store = loadStore(STEPS_KEY);
-  if ((store.chapters[id] || 0) === done) return;
+  const prev = loadStepEntry(store, id);
+  // only leading solved steps keep an assist mark; a regressed step starts over
+  const assisted = [...assistedSteps].filter((n) => n < done).sort((a, b) => a - b);
+  const unchanged =
+    prev.done === done &&
+    prev.assisted.length === assisted.length &&
+    prev.assisted.every((n, i) => n === assisted[i]);
+  if (unchanged) return;
   if (done === 0) delete store.chapters[id];
-  else store.chapters[id] = done;
+  else store.chapters[id] = { done, assisted };
   saveStore(STEPS_KEY, store);
   renderRailMarks();
 }
@@ -858,8 +885,10 @@ function renderRailMarks() {
     // chapters draw a ring. stale counts clamp to the ring's step total.
     ring.hidden = Boolean(progress.chapters[id]);
     if (ring.hidden) return;
-    const done = Math.min(total, Math.max(0, Math.trunc(Number(steps.chapters[id])) || 0));
-    ring.innerHTML = ringSvg(total, done);
+    const entry = loadStepEntry(steps, id);
+    const done = Math.min(total, entry.done);
+    const assisted = new Set(entry.assisted.filter((n) => n < done));
+    ring.innerHTML = ringSvg(total, done, assisted);
   });
   const legend = document.querySelector('.legend-steps');
   if (legend) {
@@ -950,6 +979,7 @@ function syncStepList(currentIndex, force) {
   const refold = force || currentIndex !== lastSyncedStep;
   Array.from(list.children).forEach((item, i) => {
     item.classList.toggle('is-done', i < currentIndex);
+    item.classList.toggle('is-assisted', i < currentIndex && assistedSteps.has(i));
     item.classList.toggle('is-current', i === currentIndex);
     const details = item.querySelector('details');
     if (details && refold) details.open = i === currentIndex;
@@ -1231,16 +1261,14 @@ function closeAssist() {
   assistRestoreFocus = null;
 }
 
-function currentStep() {
-  const index = firstFailingIndex();
-  if (index === null || index >= current.steps.length) return null;
-  return current.steps[index];
-}
-
 function helpAssist() {
   if (!current || typing) return;
-  const step = currentStep();
-  if (step) assists.help += 1;
+  const index = firstFailingIndex();
+  const step = index !== null && index < current.steps.length ? current.steps[index] : null;
+  if (step) {
+    assists.help += 1;
+    assistedSteps.add(index); // a hint counts this step as assisted once it clears
+  }
   focusSeedTab(step); // anchor resolution needs the seeded file visible
   openAssist(step);
 }
@@ -1328,6 +1356,7 @@ function autoAssist() {
     return;
   }
   assists.auto += 1;
+  assistedSteps.add(index); // this step was typed in for the user
   openAssist(step);
   const finish = () => {
     closeAssist();

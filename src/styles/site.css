@@ -1425,6 +1425,10 @@ h3:hover .heading-anchor,
   content: '✓';
 }
 
+.step-list li.is-assisted .step-mark {
+  color: var(--accent); /* step cleared with an assist */
+}
+
 .step-explain {
   margin: 0;
   padding: 0 0.9rem 0.65rem 2.4rem;
@@ -1466,9 +1470,13 @@ h3:hover .heading-anchor,
 }
 
 .ch-ring .seg.is-done {
-  stroke: var(--text);
+  stroke: #3fb950; /* solved by the user */
   stroke-opacity: 1;
   stroke-width: 3;
+}
+
+.ch-ring .seg.is-done.is-assisted {
+  stroke: var(--accent); /* solved with an assist */
 }
 
 .ch-mark {
