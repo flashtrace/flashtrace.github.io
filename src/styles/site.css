@@ -1517,6 +1517,7 @@ h3:hover .heading-anchor,
 
 .resume-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 1rem;
 }

@@ -214,6 +214,29 @@ function init() {
     data.chapters.find((c) => !progressEntry(c.id)) ??
     data.chapters[0];
   openChapter(initial.id);
+
+  // "Try it out" lands on #editor; on a first visit (no chapter ever
+  // completed) offer the guided route instead of two empty files
+  if (initial === FREE_EDITOR && Object.keys(loadStore(PROGRESS_KEY).chapters).length === 0) {
+    offerWelcome();
+  }
+}
+
+function offerWelcome() {
+  const modal = document.getElementById('welcome-modal');
+  const learn = document.getElementById('welcome-learn');
+  const editor = document.getElementById('welcome-editor');
+  if (!modal || !learn || !editor || typeof modal.showModal !== 'function') return;
+  const close = (starter) => () => {
+    modal.close();
+    learn.onclick = null;
+    editor.onclick = null;
+    starter();
+  };
+  learn.onclick = close(() => openChapter(data.chapters[0].id));
+  editor.onclick = close(() => {});
+  modal.oncancel = () => close(() => {})(); // Esc keeps the free editor
+  modal.showModal();
 }
 
 function progressEntry(id) {

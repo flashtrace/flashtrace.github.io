@@ -107,6 +107,19 @@ function resumeDialog() {
 </dialog>`;
 }
 
+// Shown when someone lands on #editor without any completed chapter: offer
+// the guided route before leaving a newcomer alone with two empty files.
+function welcomeDialog() {
+  return `<dialog class="resume-modal" id="welcome-modal" aria-labelledby="welcome-title">
+  <h2 id="welcome-title">First time with flashtrace?</h2>
+  <p>This is the free editor - a blank project running the real tool. The chapters on the left teach flashtrace hands-on, a few minutes each.</p>
+  <div class="resume-actions">
+    <button type="button" class="btn btn-primary" id="welcome-learn">Start learning from the first chapter</button>
+    <button type="button" class="btn btn-secondary" id="welcome-editor">Open the free editor</button>
+  </div>
+</dialog>`;
+}
+
 function miniWindow(name, inner, term = false) {
   return `<div class="mini-window${term ? ' term' : ''}"><div class="mini-bar">${dots}<span>${esc(name)}</span></div><pre class="${term ? 'term-body' : 'code'}"><code>${inner}</code></pre></div>`;
 }
@@ -177,6 +190,7 @@ ${ide(first)}
   </div>
 </div>
 ${resumeDialog()}
+${welcomeDialog()}
 ${fallbackChapters(verified)}
 <script type="application/json" id="tutorial-data">${dataJson}</script>
 <script type="module" src="/try/tutorial.js"></script>
