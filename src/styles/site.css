@@ -21,6 +21,8 @@
   --ok: #15803d;
   --no: #b91c1c;
   --info: #0e7490;
+  --scroll-thumb: #d6d3d1;
+  --scroll-thumb-hover: #a8a29e;
   --shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 8px 24px rgb(0 0 0 / 0.06);
   --topbar-h: 3.5rem;
   color-scheme: light;
@@ -45,6 +47,8 @@
   --ok: #3fb950;
   --no: #f85149;
   --info: #56b6c2;
+  --scroll-thumb: #423c37;
+  --scroll-thumb-hover: #5a534d;
   --shadow: 0 1px 3px rgb(0 0 0 / 0.5), 0 8px 24px rgb(0 0 0 / 0.35);
   color-scheme: dark;
 }
@@ -70,6 +74,8 @@
     --ok: #3fb950;
     --no: #f85149;
     --info: #56b6c2;
+    --scroll-thumb: #423c37;
+    --scroll-thumb-hover: #5a534d;
     color-scheme: dark;
   }
 }
@@ -170,6 +176,56 @@ button {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- scrollbars ---------- */
+
+/* WebKit/Blink: trackless rounded thumbs; the transparent border +
+   padding-box clip keeps a gutter so the thumb floats off the edge */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scroll-thumb-hover);
+}
+
+/* slimmer bar for inner scroll areas (chapter/docs rails, toc) */
+.sidebar::-webkit-scrollbar,
+.toc::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-thumb,
+.toc::-webkit-scrollbar-thumb {
+  border-width: 2px;
+}
+
+/* Firefox has no ::-webkit-scrollbar - use the standard properties there.
+   Blink is excluded on purpose: setting scrollbar-color would replace the
+   nicer pseudo-element styling above with its plain square thumbs. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-color: var(--scroll-thumb) transparent;
+  }
+
+  .sidebar,
+  .toc {
+    scrollbar-width: thin;
   }
 }
 
@@ -417,6 +473,8 @@ button {
   --tk-id: #f9c21d;
   --tk-kw: #e8964a;
   --tk-arrow: #56b6c2;
+  --scroll-thumb: #3f3c3a;
+  --scroll-thumb-hover: #57534e;
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid #33302c;
