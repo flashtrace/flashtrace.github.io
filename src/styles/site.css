@@ -1365,6 +1365,30 @@ h3:hover .heading-anchor,
   margin: 0 0 1.25rem;
 }
 
+/* live head only: docs links left, "Help me" right (the fallback keeps the plain paragraph) */
+
+.ch-docs-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.5rem;
+  margin: 0 0 1.25rem;
+}
+
+.ch-docs-row .ch-docs {
+  margin: 0;
+}
+
+.ch-docs-row .btn {
+  margin-left: auto;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.85rem;
+}
+
+.ch-docs-row .btn[hidden] {
+  display: none;
+}
+
 /* step accordion between the intro and the IDE */
 
 .step-list {
@@ -1668,15 +1692,22 @@ h3:hover .heading-anchor,
   background: rgb(255 255 255 / 0.08);
 }
 
-.assist-actions {
-  display: flex;
-  gap: 0.6rem;
-  margin-left: auto;
+/* follow-up action inside the always-dark popup - fixed dark-theme colors */
+
+.assist-auto {
+  margin-top: 0.7rem;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid #57534e;
+  border-radius: 8px;
+  background: #2a2724;
+  color: #d4d4d4;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.assist-actions .btn {
-  padding: 0.35rem 0.9rem;
-  font-size: 0.85rem;
+.assist-auto:hover {
+  border-color: var(--accent);
 }
 
 /* completed-chapter overlay: the solved IDE stays visible but blurred */

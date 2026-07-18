@@ -112,6 +112,7 @@ function ide(first) {
     <button type="button" class="assist-close" id="assist-close" aria-label="Dismiss help">✕</button>
     <p class="assist-text" id="assist-text"></p>
     <p class="assist-doc-link"><a id="assist-doc" href="/docs/">Read more in the docs</a></p>
+    <button type="button" class="assist-auto" id="assist-auto" hidden>Do this step for me</button>
   </div>
 </div>`;
 }
@@ -262,17 +263,16 @@ ${chapterRail()}
   <p class="ch-kicker"><span id="ch-kicker">Chapter 1 · ${esc(first.group)}</span></p>
   <h1 id="ch-title">${esc(first.title)}</h1>
   <p class="ch-intro" id="ch-intro">${esc(first.intro)}</p>
-  <p class="ch-docs">Read more: <span id="ch-docs">${docsLinks(first)}</span></p>
+  <div class="ch-docs-row">
+    <p class="ch-docs">Read more: <span id="ch-docs">${docsLinks(first)}</span></p>
+    <button type="button" id="help-btn" class="btn btn-secondary" disabled>Help me</button>
+  </div>
 </section>
 ${stepList(first)}
 ${ide(first)}
 <div class="assist-bar" id="assist-bar">
   <p class="assist-goal"><strong>Goal:</strong> <span id="goal-text">${esc(first.goal)}</span></p>
   <p class="assist-progress" id="step-progress" aria-live="polite">Run to check your progress.</p>
-  <div class="assist-actions">
-    <button type="button" id="help-btn" class="btn btn-secondary" disabled>Help me</button>
-    <button type="button" id="auto-btn" class="btn btn-secondary" disabled>Do the next step for me</button>
-  </div>
 </div>
 ${resumeDialog()}
 ${welcomeDialog()}

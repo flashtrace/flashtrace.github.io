@@ -605,8 +605,10 @@ function openChapter(id) {
   }
   terminal.innerHTML = '<span class="t-dim">press Run to trace the project</span>';
   closeAssist();
-  for (const btn of [document.getElementById('help-btn'), document.getElementById('auto-btn')]) {
-    if (btn) btn.disabled = true; // re-enabled once the first analysis lands
+  const helpBtn = document.getElementById('help-btn');
+  if (helpBtn) {
+    helpBtn.hidden = Boolean(chapter.free); // the sandbox has no steps to help with
+    helpBtn.disabled = true; // re-enabled once the first analysis lands
   }
 
   // buffers: a finished chapter silently restores its solved files behind the
@@ -806,7 +808,7 @@ function completionStatement(entry) {
 // Each chapter link carries a small SVG donut split into one arc per step,
 // running clockwise from 12 o'clock: steps solved so far draw bold, the rest
 // stay thin and muted. A step the user cleared themselves draws green; one
-// finished with an assist ("Do the next step for me" / a hint) draws amber.
+// finished with an assist ("Do this step for me" / a hint) draws amber.
 // Per-chapter progress persists under STEPS_KEY ({ done, assisted } written
 // after every analysis) so the rings survive reloads and chapter switches.
 // Once a chapter is completed its ring gives way to the ✓ check, so exactly
@@ -1003,9 +1005,8 @@ function updateStepUi(fromRealRun) {
   const firstFailing = firstFailingIndex();
   const solved = safeCheck(current.done, lastResult);
   saveStepProgress(current.id, firstFailing);
-  for (const btn of [document.getElementById('help-btn'), document.getElementById('auto-btn')]) {
-    if (btn) btn.disabled = false;
-  }
+  const helpBtn = document.getElementById('help-btn');
+  if (helpBtn) helpBtn.disabled = false;
   const completed = Boolean(progressEntry(current.id));
   if (solved && (completed || fromRealRun)) {
     setText('step-progress', chapterCompleteText());
@@ -1117,18 +1118,19 @@ function run(silent) {
   worker.postMessage({ files, argv });
 }
 
-// --- assists: "Help me" / "Do the next step for me" --------------------------
+// --- assists: "Help me" and its "Do this step for me" follow-up --------------
 //
 // Both operate on the current step. Help spotlights the step's anchor inside
-// the IDE and explains it in a popup; auto additionally typewrites the step's
-// patch into the editor (setRangeText, so undo works) and runs.
+// the IDE and explains it in a popup; the popup offers "Do this step for me"
+// as a follow-up, which typewrites the step's patch into the editor
+// (setRangeText, so undo works) and runs.
 
 let typing = false; // typewriter in flight - runs and assists wait
 let assistRestoreFocus = null;
 
 function initAssists() {
   const helpButton = document.getElementById('help-btn');
-  const autoButton = document.getElementById('auto-btn');
+  const autoButton = document.getElementById('assist-auto');
   const closeButton = document.getElementById('assist-close');
   const spotlight = document.getElementById('spotlight');
   if (!helpButton || !autoButton || !closeButton || !spotlight) return;
@@ -1227,7 +1229,10 @@ function openAssist(step) {
   const docRef = current.docs[0];
   doc.href = docRef.href;
   doc.textContent = 'Read more: ' + docRef.label;
+  const auto = document.getElementById('assist-auto');
+  if (auto) auto.hidden = !step; // solved chapters leave nothing to apply
 
+  const wasOpen = !pop.hidden;
   const { rect } = assistTarget(step);
   hole.style.left = rect.left + 'px';
   hole.style.top = rect.top + 'px';
@@ -1247,7 +1252,9 @@ function openAssist(step) {
   pop.style.left = left + 'px';
   pop.style.visibility = '';
 
-  assistRestoreFocus = document.activeElement;
+  // on a follow-up (auto after help) keep the original restore target - the
+  // active element is then a button inside the popup that is about to hide
+  if (!wasOpen) assistRestoreFocus = document.activeElement;
   pop.focus();
 }
 
@@ -1315,6 +1322,13 @@ function typewriter(editor, start, oldEnd, insert, onDone) {
   }, 18);
 }
 
+// the popup stays open while the step is applied (or explains why it cannot
+// be) - either way the follow-up action has been spent, so it hides
+function hideAssistAuto() {
+  const auto = document.getElementById('assist-auto');
+  if (auto) auto.hidden = true;
+}
+
 function autoAssist() {
   if (!current || typing) return;
   const index = firstFailingIndex();
@@ -1327,6 +1341,7 @@ function autoAssist() {
   if (!focusSeedTab(step)) {
     // the seeded file this step patches was deleted (unlocked chapters allow it)
     openAssist(step);
+    hideAssistAuto();
     const text = document.getElementById('assist-text');
     if (text) {
       const seedFile = step.pane === 'spec' ? current.spec.file : current.variant.file;
@@ -1346,6 +1361,7 @@ function autoAssist() {
   const after = applyStep(current, data.lang, step, before);
   if (after.failed) {
     openAssist(step);
+    hideAssistAuto();
     const text = document.getElementById('assist-text');
     if (text) {
       text.textContent =
@@ -1358,6 +1374,7 @@ function autoAssist() {
   assists.auto += 1;
   assistedSteps.add(index); // this step was typed in for the user
   openAssist(step);
+  hideAssistAuto();
   const finish = () => {
     closeAssist();
     run(false);
