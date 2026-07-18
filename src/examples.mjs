@@ -1,6 +1,6 @@
 // Curated interactive examples: real inputs and terminal output captured from
 // actual `flashtrace` runs (v0.7.0). The landing page ships these pre-computed
-// captures; the /try/ page runs the same CLI live in the browser.
+// captures; the /learn/ page runs the same CLI live in the browser.
 
 export const heroTerminal = {
   command: 'npx flashtrace',

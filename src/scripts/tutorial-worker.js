@@ -1,4 +1,4 @@
-// Module worker for /try/: executes the real, release-pinned flashtrace
+// Module worker for /learn/: executes the real, release-pinned flashtrace
 // bundle (node:* imports rewritten to ./shims/ at build time) against the
 // editor buffers as in-memory files, then derives structured results from the
 // bundle's exported library surface for the chapter checks.

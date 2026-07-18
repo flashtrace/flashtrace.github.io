@@ -2,7 +2,7 @@
 // HTML-escaped already. Generic code stays uncolored.
 //
 // Standalone and dependency-free because it is shared between the build
-// (layout.mjs re-exports it) and the browser (/try/ editor highlight overlay).
+// (layout.mjs re-exports it) and the browser (/learn/ editor highlight overlay).
 //
 // Deliberately language-agnostic: it runs on every fenced block and codespan
 // regardless of its info string, because flashtrace tokens appear inside

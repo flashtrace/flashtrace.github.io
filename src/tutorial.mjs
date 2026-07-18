@@ -1,4 +1,4 @@
-// The /try/ page: chapter rail + a large editable IDE mock whose terminal
+// The /learn/ page: chapter rail + a large editable IDE mock whose terminal
 // executes the real flashtrace release build in a module worker (see
 // src/scripts/tutorial.js). Server-renders chapter 1 as the initial state and
 // a full read-only fallback for browsers without JavaScript. Internal naming
@@ -193,7 +193,7 @@ ${resumeDialog()}
 ${welcomeDialog()}
 ${fallbackChapters(verified)}
 <script type="application/json" id="tutorial-data">${dataJson}</script>
-<script type="module" src="/try/tutorial.js"></script>
+<script type="module" src="/learn/tutorial.js"></script>
 </main>
 </div>`;
 
@@ -201,7 +201,7 @@ ${fallbackChapters(verified)}
     title: 'Try flashtrace - interactive tutorial',
     description:
       'Learn flashtrace hands-on: guided chapters in an editable IDE that runs the real release build in your browser.',
-    path: '/try/',
+    path: '/learn/',
     version,
     active: 'tutorial',
     body,

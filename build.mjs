@@ -177,14 +177,14 @@ function renderDoc(page) {
   });
 }
 
-// --- /try/ runner: the release bundle, node builtins rewritten to shims -----
+// --- /learn/ runner: the release bundle, node builtins rewritten to shims ---
 
 // CI checks out the full tool repo, so dist/flashtrace.mjs sits next to the
 // docs the build already consumes. Locally the clone provides it the same way.
 const bundlePath = path.join(docsDir, '..', 'dist', 'flashtrace.mjs');
 if (!existsSync(bundlePath)) {
   console.error(
-    `error: flashtrace bundle not found at ${bundlePath} - the /try/ page runs the release build in the browser and needs it. ` +
+    `error: flashtrace bundle not found at ${bundlePath} - the /learn/ page runs the release build in the browser and needs it. ` +
       'Make sure the tool repo checkout includes dist/.',
   );
   process.exit(1);
@@ -192,7 +192,7 @@ if (!existsSync(bundlePath)) {
 
 // The exact builtin set the shims in src/tutorial/shims/ cover. A release
 // that imports anything else (or drops one) must fail the build here, never
-// silently ship a broken /try/ page.
+// silently ship a broken /learn/ page.
 const SHIMMED_BUILTINS = ['child_process', 'fs', 'path', 'process', 'url'];
 
 function rewriteBundle(source) {
@@ -204,7 +204,7 @@ function rewriteBundle(source) {
   const actual = [...found].sort();
   if (actual.join(',') !== SHIMMED_BUILTINS.join(',')) {
     console.error(
-      `error: flashtrace.mjs imports node builtins [${actual.join(', ')}] but the /try/ shims cover exactly [${SHIMMED_BUILTINS.join(', ')}].\n` +
+      `error: flashtrace.mjs imports node builtins [${actual.join(', ')}] but the /learn/ shims cover exactly [${SHIMMED_BUILTINS.join(', ')}].\n` +
         'Align src/tutorial/shims/ (and this assertion) with the release bundle.',
     );
     process.exit(1);
@@ -231,32 +231,32 @@ for (const page of pages) {
   writeFileSync(path.join(dir, 'index.html'), renderDoc(page));
 }
 
-const tryDir = path.join(dist, 'try');
-mkdirSync(tryDir, { recursive: true });
-writeFileSync(path.join(tryDir, 'flashtrace.mjs'), rewriteBundle(readFileSync(bundlePath, 'utf8')));
-cpSync(path.join(root, 'src', 'tutorial', 'shims'), path.join(tryDir, 'shims'), { recursive: true });
-cpSync(path.join(root, 'src', 'tutorial', 'chapter-utils.mjs'), path.join(tryDir, 'chapter-utils.mjs'));
-cpSync(path.join(root, 'src', 'scripts', 'tutorial.js'), path.join(tryDir, 'tutorial.js'));
-cpSync(path.join(root, 'src', 'scripts', 'tutorial-worker.js'), path.join(tryDir, 'tutorial-worker.js'));
-cpSync(path.join(root, 'src', 'report-colors.mjs'), path.join(tryDir, 'report-colors.mjs'));
-cpSync(path.join(root, 'src', 'highlight.mjs'), path.join(tryDir, 'highlight.mjs'));
+const learnDir = path.join(dist, 'learn');
+mkdirSync(learnDir, { recursive: true });
+writeFileSync(path.join(learnDir, 'flashtrace.mjs'), rewriteBundle(readFileSync(bundlePath, 'utf8')));
+cpSync(path.join(root, 'src', 'tutorial', 'shims'), path.join(learnDir, 'shims'), { recursive: true });
+cpSync(path.join(root, 'src', 'tutorial', 'chapter-utils.mjs'), path.join(learnDir, 'chapter-utils.mjs'));
+cpSync(path.join(root, 'src', 'scripts', 'tutorial.js'), path.join(learnDir, 'tutorial.js'));
+cpSync(path.join(root, 'src', 'scripts', 'tutorial-worker.js'), path.join(learnDir, 'tutorial-worker.js'));
+cpSync(path.join(root, 'src', 'report-colors.mjs'), path.join(learnDir, 'report-colors.mjs'));
+cpSync(path.join(root, 'src', 'highlight.mjs'), path.join(learnDir, 'highlight.mjs'));
 
 // Every chapter's start state and each step's cumulative patched state runs
 // through the exact bundle the browser executes; behavioral drift in a
 // flashtrace release fails the deploy here instead of shipping a broken lesson.
 let verified;
 try {
-  verified = await verifyChapters(chapters, path.join(tryDir, 'flashtrace.mjs'), 'js');
+  verified = await verifyChapters(chapters, path.join(learnDir, 'flashtrace.mjs'), 'js');
 } catch (err) {
   console.error(`error: tutorial chapter verification failed.\n${err.message}`);
   process.exit(1);
 }
-writeFileSync(path.join(tryDir, 'index.html'), renderTutorial({ version, verified }));
+writeFileSync(path.join(learnDir, 'index.html'), renderTutorial({ version, verified }));
 
 const sitePaths = [
   '/',
   ...pages.map((p) => (p.slug ? `/docs/${p.slug}/` : '/docs/')),
-  '/try/',
+  '/learn/',
   '/license/',
   '/impressum/',
 ];

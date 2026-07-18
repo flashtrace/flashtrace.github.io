@@ -5,7 +5,7 @@
 // relies on fails the build here instead of shipping a broken lesson.
 //
 // Also computes each chapter's content-hash identity (`rev`) and the
-// JSON-safe payload embedded into the /try/ page.
+// JSON-safe payload embedded into the /learn/ page.
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 

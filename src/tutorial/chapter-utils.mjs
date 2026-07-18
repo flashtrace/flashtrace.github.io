@@ -1,6 +1,6 @@
-// Pure helpers shared by the tutorial worker (browser), the /try/ page script
+// Pure helpers shared by the tutorial worker (browser), the /learn/ page script
 // (browser) and the build-time chapter verification (Node). No imports, no
-// side effects - this module is copied verbatim into dist/try/.
+// side effects - this module is copied verbatim into dist/learn/.
 
 // Mirrors the CLI's -t/--tags parsing closely enough for the structured
 // analysis to match what a run with the same argv reports.

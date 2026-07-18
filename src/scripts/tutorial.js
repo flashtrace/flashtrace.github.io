@@ -1,4 +1,4 @@
-// /try/ page script: chapter engine + runner. Each Run spawns a fresh module
+// /learn/ page script: chapter engine + runner. Each Run spawns a fresh module
 // worker that executes the real flashtrace release build against the editor
 // buffers; chapter checks evaluate the worker's structured results. Progress
 // and in-flight buffers persist in localStorage (ft-tutorial-*), keyed by

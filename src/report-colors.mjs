@@ -1,6 +1,6 @@
 // Re-create the CLI's report coloring (src/report.mjs in the tool repo) as
 // HTML spans over plain-text output. Shared between the build (landing page
-// captures) and the browser (/try/ terminal), so it must stay dependency-free
+// captures) and the browser (/learn/ terminal), so it must stay dependency-free
 // and standalone - `esc` lives here instead of importing layout.mjs, which
 // would drag the whole page-shell module into the client bundle.
 

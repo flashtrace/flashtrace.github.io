@@ -16,7 +16,7 @@ export function esc(s) {
     .replaceAll('"', '&quot;');
 }
 
-// highlightTokens lives in its own dependency-free module (the /try/ page
+// highlightTokens lives in its own dependency-free module (the /learn/ page
 // also ships it to the browser); re-exported here for the build-side callers.
 export { highlightTokens } from './highlight.mjs';
 
@@ -40,10 +40,11 @@ function topBar({ version, active, withSidebar }) {
     <a class="version-badge" href="${GITHUB_URL}/releases"${EXT_ATTRS} title="flashtrace release">${esc(version)}</a>
     <nav class="topbar-nav" aria-label="Site">
       ${link('/', 'Home', 'home')}
+      ${link('/learn/', 'Learn', 'tutorial')}
       ${link('/docs/', 'Docs', 'docs')}
     </nav>
     <div class="topbar-actions">
-      <a class="btn btn-primary btn-cta" href="/try/#editor"${active === 'tutorial' ? ' aria-current="page"' : ''}>Try it out</a>
+      <a class="btn btn-primary btn-cta" href="/learn/#editor"${active === 'tutorial' ? ' aria-current="page"' : ''}>Try it out</a>
       <a class="icon-btn" href="${GITHUB_URL}"${EXT_ATTRS} aria-label="flashtrace on GitHub">${githubIcon}</a>
       <button class="icon-btn theme-toggle" aria-label="Toggle color theme">
         <span class="only-light">${moonIcon}</span><span class="only-dark">${sunIcon}</span>
