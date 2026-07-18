@@ -19,6 +19,7 @@ const codeTabs = document.getElementById('code-tabs');
 
 const PROGRESS_KEY = 'ft-tutorial-progress';
 const BUFFERS_KEY = 'ft-tutorial-buffers';
+const STEPS_KEY = 'ft-tutorial-steps';
 const RUN_TIMEOUT_MS = 5000;
 
 // --- defensive localStorage stores ------------------------------------------
@@ -48,6 +49,7 @@ function removeStores() {
   try {
     localStorage.removeItem(PROGRESS_KEY);
     localStorage.removeItem(BUFFERS_KEY);
+    localStorage.removeItem(STEPS_KEY);
   } catch {
     /* ignore */
   }
@@ -258,6 +260,7 @@ function init() {
       if (!window.confirm("Reset this chapter? Its completion and solved files are forgotten and the start files restored.")) return;
       deleteProgressEntry(current.id);
       deleteBufferEntry(current.id);
+      deleteStepsEntry(current.id);
       setCompletedOverlay(null);
       seedBuffers();
       setText('step-progress', 'Run to check your progress.');
@@ -797,8 +800,71 @@ function completionStatement(entry) {
   );
 }
 
+// --- rail progress rings -----------------------------------------------------
+// Each chapter link carries a small SVG donut split into one arc per step,
+// running clockwise from 12 o'clock: steps solved so far draw bold in the text
+// color, the rest stay thin and muted. Solved-step counts persist per chapter
+// under STEPS_KEY (written after every analysis) so the rings survive reloads
+// and chapter switches; a completed chapter always shows a full ring.
+
+function ringPoint(radius, deg) {
+  const rad = (deg * Math.PI) / 180;
+  return (8 + radius * Math.sin(rad)).toFixed(2) + ' ' + (8 - radius * Math.cos(rad)).toFixed(2);
+}
+
+function ringSvg(total, done) {
+  const radius = 6.25;
+  const cls = (i) => 'seg' + (i < done ? ' is-done' : '');
+  let body;
+  if (total === 1) {
+    body = '<circle class="' + cls(0) + '" cx="8" cy="8" r="' + radius + '"/>';
+  } else {
+    const span = 360 / total;
+    const gap = Math.min(18, span / 4);
+    body = Array.from({ length: total }, (_, i) => {
+      const from = i * span + gap / 2;
+      const to = (i + 1) * span - gap / 2;
+      const arc = 'A' + radius + ' ' + radius + ' 0 ' + (to - from > 180 ? 1 : 0) + ' 1 ';
+      return '<path class="' + cls(i) + '" d="M' + ringPoint(radius, from) + ' ' + arc + ringPoint(radius, to) + '"/>';
+    }).join('');
+  }
+  return '<svg viewBox="0 0 16 16">' + body + '</svg>';
+}
+
+function saveStepProgress(id, done) {
+  const store = loadStore(STEPS_KEY);
+  if ((store.chapters[id] || 0) === done) return;
+  if (done === 0) delete store.chapters[id];
+  else store.chapters[id] = done;
+  saveStore(STEPS_KEY, store);
+  renderRailMarks();
+}
+
+function deleteStepsEntry(id) {
+  const store = loadStore(STEPS_KEY);
+  delete store.chapters[id];
+  saveStore(STEPS_KEY, store);
+}
+
 function renderRailMarks() {
   const progress = loadStore(PROGRESS_KEY);
+  const steps = loadStore(STEPS_KEY);
+  document.querySelectorAll('.ch-ring[data-ring]').forEach((ring) => {
+    const id = ring.getAttribute('data-ring');
+    const total = Math.trunc(Number(ring.getAttribute('data-steps'))) || 0;
+    if (total < 1) return;
+    // stale counts (e.g. a chapter shrank in a revision) clamp to the ring
+    const done = progress.chapters[id]
+      ? total
+      : Math.min(total, Math.max(0, Math.trunc(Number(steps.chapters[id])) || 0));
+    ring.innerHTML = ringSvg(total, done);
+  });
+  const legend = document.querySelector('.legend-steps');
+  if (legend) {
+    legend.hidden = false;
+    const demo = legend.querySelector('[data-ring-demo]');
+    if (demo) demo.innerHTML = ringSvg(3, 1);
+  }
   let any = false;
   document.querySelectorAll('.ch-mark[data-mark]').forEach((mark) => {
     const entry = progress.chapters[mark.getAttribute('data-mark')];
@@ -904,6 +970,7 @@ function updateStepUi(fromRealRun) {
   const steps = current.steps;
   const firstFailing = firstFailingIndex();
   const solved = safeCheck(current.done, lastResult);
+  saveStepProgress(current.id, firstFailing);
   for (const btn of [document.getElementById('help-btn'), document.getElementById('auto-btn')]) {
     if (btn) btn.disabled = false;
   }

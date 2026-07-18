@@ -38,7 +38,7 @@ function chapterRail() {
     ${g.items
       .map((ch) => {
         no += 1;
-        return `<li><a href="#${ch.id}" data-chapter="${ch.id}"${no === 1 ? ' class="is-current" aria-current="page"' : ''}><span class="ch-mark" data-mark="${ch.id}" aria-hidden="true"></span>${no} · ${esc(ch.title)}</a></li>`;
+        return `<li><a href="#${ch.id}" data-chapter="${ch.id}"${no === 1 ? ' class="is-current" aria-current="page"' : ''}><span class="ch-ring" data-ring="${ch.id}" data-steps="${ch.steps.length}" aria-hidden="true"></span><span class="ch-mark" data-mark="${ch.id}" aria-hidden="true"></span>${no} · ${esc(ch.title)}</a></li>`;
       })
       .join('\n    ')}
   </ul>
@@ -48,12 +48,12 @@ function chapterRail() {
   return `<nav class="sidebar" id="sidebar" aria-label="Chapters">
 <div class="nav-group">
   <ul>
-    <li><a href="#editor" data-chapter="editor"><span class="ch-mark" aria-hidden="true"></span>Free editor</a></li>
+    <li><a href="#editor" data-chapter="editor"><span class="ch-ring" aria-hidden="true"></span><span class="ch-mark" aria-hidden="true"></span>Free editor</a></li>
   </ul>
 </div>
 ${groupHtml}
 <div class="rail-foot">
-  <p class="rail-legend"><span class="ch-mark is-done" aria-hidden="true"></span> completed · <span class="ch-mark is-assisted" aria-hidden="true"></span> with assists</p>
+  <p class="rail-legend"><span class="legend-steps" hidden><span class="ch-ring" data-ring-demo aria-hidden="true"></span> steps solved · </span><span class="ch-mark is-done" aria-hidden="true"></span> completed · <span class="ch-mark is-assisted" aria-hidden="true"></span> with assists</p>
   <button type="button" class="rail-reset" id="reset-progress" hidden>Reset progress</button>
 </div>
 </nav>

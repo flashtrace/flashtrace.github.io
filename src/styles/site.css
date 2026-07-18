@@ -1439,6 +1439,33 @@ h3:hover .heading-anchor,
 
 /* chapter rail marks */
 
+/* per-chapter step progress: an SVG donut with one arc per step (see
+   ringSvg in tutorial.js); solved arcs draw bold in the text color */
+
+.ch-ring {
+  display: inline-block;
+  width: 1.3rem;
+}
+
+.ch-ring svg {
+  width: 0.85rem;
+  height: 0.85rem;
+  vertical-align: -0.1rem;
+}
+
+.ch-ring .seg {
+  fill: none;
+  stroke: var(--muted);
+  stroke-opacity: 0.4;
+  stroke-width: 1.5;
+}
+
+.ch-ring .seg.is-done {
+  stroke: var(--text);
+  stroke-opacity: 1;
+  stroke-width: 3;
+}
+
 .ch-mark {
   display: inline-block;
   width: 1.1rem;
