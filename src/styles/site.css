@@ -915,6 +915,33 @@ button {
   font-weight: 600;
 }
 
+/* Free editor is not a progress-tracked chapter, so it drops the ring/check
+   gutter and reads as a distinct chip pinned above the chapter groups. */
+.nav-group a.fe-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0.25rem 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-soft);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.nav-group a.fe-pill:hover,
+.nav-group a.fe-pill.is-current {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.fe-ico {
+  color: var(--accent);
+  font-weight: 700;
+}
+
 .sidebar-backdrop {
   display: none;
 }

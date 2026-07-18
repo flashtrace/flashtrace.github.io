@@ -48,7 +48,7 @@ function chapterRail() {
   return `<nav class="sidebar" id="sidebar" aria-label="Chapters">
 <div class="nav-group">
   <ul>
-    <li><a href="#editor" data-chapter="editor"><span class="ch-ring" aria-hidden="true"></span><span class="ch-mark" aria-hidden="true"></span>Free editor</a></li>
+    <li><a class="fe-pill" href="#editor" data-chapter="editor"><span class="fe-ico" aria-hidden="true">&lsaquo;&rsaquo;</span>Free editor</a></li>
   </ul>
 </div>
 ${groupHtml}
