@@ -1,6 +1,6 @@
 // Static site generator: renders the flashtrace tool repo's docs/ plus the
 // hand-written landing page into dist/. Pure Node + marked, no framework.
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -255,6 +255,13 @@ cpSync(path.join(root, 'src', 'tutorial', 'shims'), path.join(learnDir, 'shims')
 cpSync(path.join(root, 'src', 'tutorial', 'chapter-utils.mjs'), path.join(learnDir, 'chapter-utils.mjs'));
 cpSync(path.join(root, 'src', 'scripts', 'tutorial.js'), path.join(learnDir, 'tutorial.js'));
 cpSync(path.join(root, 'src', 'scripts', 'tutorial-worker.js'), path.join(learnDir, 'tutorial-worker.js'));
+// tutorial.js is an entry that imports its engine from sibling ./tutorial-*.mjs
+// modules; the browser loads them flat next to it, so copy each one.
+for (const name of readdirSync(path.join(root, 'src', 'scripts'))) {
+  if (/^tutorial-.*\.mjs$/.test(name)) {
+    cpSync(path.join(root, 'src', 'scripts', name), path.join(learnDir, name));
+  }
+}
 cpSync(path.join(root, 'src', 'report-colors.mjs'), path.join(learnDir, 'report-colors.mjs'));
 cpSync(path.join(root, 'src', 'highlight.mjs'), path.join(learnDir, 'highlight.mjs'));
 
