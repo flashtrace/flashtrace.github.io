@@ -107,29 +107,94 @@
     pre.appendChild(btn);
   });
 
-  // --- right-rail TOC scrollspy ---
+  // --- right-rail TOC flow indicator ---
+  // A single rail marker whose top/height track the projection of the visible
+  // document window onto the TOC entries, so the highlight "flows" across the
+  // sections currently on screen instead of snapping to one heading.
   var tocLinks = document.querySelectorAll('.toc a[href^="#"]');
-  if (tocLinks.length && 'IntersectionObserver' in window) {
-    var byId = {};
-    tocLinks.forEach(function (a) {
-      byId[a.getAttribute('href').slice(1)] = a;
+  var docContent = document.querySelector('.doc-content');
+  var tocList = document.querySelector('.toc ul');
+  if (tocLinks.length && docContent && tocList) {
+    var sections = [];
+    tocLinks.forEach(function (link) {
+      var heading = document.getElementById(link.getAttribute('href').slice(1));
+      if (heading) sections.push({ link: link, li: link.parentNode, heading: heading });
     });
-    var current = null;
-    var observer = new IntersectionObserver(
-      function (entries) {
-        entries.forEach(function (entry) {
-          if (!entry.isIntersecting) return;
-          var link = byId[entry.target.id];
-          if (!link) return;
-          if (current) current.classList.remove('is-active');
-          link.classList.add('is-active');
-          current = link;
+
+    if (sections.length) {
+      var marker = document.createElement('span');
+      marker.className = 'toc-flow';
+      tocList.appendChild(marker);
+
+      var topbarH =
+        parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h')) || 56;
+
+      function updateFlow() {
+        var scrollY = window.pageYOffset;
+        var viewTop = scrollY + topbarH; // top reading line, below the sticky bar
+        var viewBottom = scrollY + window.innerHeight;
+        var readingH = Math.max(window.innerHeight - topbarH, 1);
+        var ulTop = tocList.getBoundingClientRect().top + scrollY;
+        var contentBottom = docContent.getBoundingClientRect().bottom + scrollY;
+
+        var barTop = Infinity;
+        var barBottom = -Infinity;
+
+        for (var i = 0; i < sections.length; i++) {
+          var s = sections[i];
+          var secTop = s.heading.getBoundingClientRect().top + scrollY;
+          var secBottom =
+            i + 1 < sections.length
+              ? sections[i + 1].heading.getBoundingClientRect().top + scrollY
+              : contentBottom;
+          var secH = Math.max(secBottom - secTop, 1);
+
+          var clipTop = Math.max(viewTop, secTop);
+          var clipBottom = Math.min(viewBottom, secBottom);
+          var visible = clipBottom - clipTop;
+
+          if (visible <= 0) {
+            s.link.classList.remove('is-active');
+            continue;
+          }
+
+          // Project this section's visible slice onto its TOC entry's height.
+          var liRect = s.li.getBoundingClientRect();
+          var eTop = liRect.top + scrollY;
+          var segTop = eTop + ((clipTop - secTop) / secH) * liRect.height;
+          var segBottom = eTop + ((clipBottom - secTop) / secH) * liRect.height;
+          if (segTop < barTop) barTop = segTop;
+          if (segBottom > barBottom) barBottom = segBottom;
+
+          // Binary text highlight: lit while the section holds the top reading
+          // line or occupies a meaningful share of the viewport.
+          var containsTop = viewTop >= secTop && viewTop < secBottom;
+          var frac = visible / Math.min(readingH, secH);
+          s.link.classList.toggle('is-active', containsTop || frac >= 0.4);
+        }
+
+        if (barBottom > barTop) {
+          marker.style.top = barTop - ulTop + 'px';
+          marker.style.height = barBottom - barTop + 'px';
+          marker.style.opacity = '1';
+        } else {
+          marker.style.opacity = '0';
+        }
+      }
+
+      var ticking = false;
+      function onScroll() {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(function () {
+          ticking = false;
+          updateFlow();
         });
-      },
-      { rootMargin: '-56px 0px -70% 0px', threshold: 0 },
-    );
-    document.querySelectorAll('.doc-content h2[id], .doc-content h3[id]').forEach(function (h) {
-      observer.observe(h);
-    });
+      }
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', onScroll);
+      updateFlow();
+    }
   }
 })();
