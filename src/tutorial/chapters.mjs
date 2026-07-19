@@ -556,8 +556,8 @@ export function openSession(token) {
     title: 'Tags & scoped runs',
     group: 'Features',
     intro:
-      'Tags: lines group items, and -t scopes a run to matching Markdown items - code items always come along. The reporting requirement fails here only because its code lives in another repository slice. This time you fix the command, not the files.',
-    goal: 'Scope the run to the auth work so the trace of this slice is clean.',
+      'Tags: lines group items, and -t scopes a run to matching Markdown items - code items always come along. Here the auth requirement is not filed under any tag yet, and the reporting requirement fails only because its code lives in another repository slice. Label the auth work first, then narrow the run to it.',
+    goal: 'Tag the auth requirement, then scope the run to it so this slice traces clean.',
     docs: [{ label: 'Command line', href: '/docs/command-line/' }],
     argv: [],
     startsClean: false,
@@ -571,8 +571,6 @@ Users must be able to log in with email and password.
 
 Needs: impl:auth/login#1
 
-Tags: auth
-
 ## Weekly report
 
 \`req:report/weekly#1\`
@@ -582,8 +580,12 @@ Ops can inspect weekly usage numbers.
 Needs: impl:report/weekly#1
 
 Tags: reporting`,
-      anchors: {},
-      snippets: {},
+      anchors: {
+        loginNeeds: '^Needs: impl:auth/login#1$',
+      },
+      snippets: {
+        tagsLine: '\nTags: auth',
+      },
     },
     variants: {
       js: {
@@ -597,6 +599,15 @@ export function login(email, password) {
       },
     },
     steps: [
+      {
+        title: 'File it under a tag',
+        explain:
+          'Group items with a Tags: line. Below the login requirement\'s Needs, add "Tags: auth" as its own keyword block - a blank line above it, just like Needs and Covers. Run it: nothing moves yet - a tag is only a label until a run filters on it.',
+        pane: 'spec',
+        anchor: 'loginNeeds',
+        patch: { op: 'insertAfter', snippet: 'tagsLine' },
+        check: (r) => r.items.some((i) => i.id === 'req:auth/login#1' && i.tags.includes('auth')),
+      },
       {
         title: 'Scope the run with -t',
         explain:
