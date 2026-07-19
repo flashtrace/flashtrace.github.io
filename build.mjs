@@ -1,6 +1,6 @@
 // Static site generator: renders the flashtrace tool repo's docs/ plus the
 // hand-written landing page into dist/. Pure Node + marked, no framework.
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +11,9 @@ import { docShell, esc, EXT_ATTRS, GITHUB_URL, highlightTokens, SITE_URL } from 
 import { renderLanding } from './src/landing.mjs';
 import { renderImpressum } from './src/impressum.mjs';
 import { renderLicense } from './src/license.mjs';
+import { renderTutorial } from './src/tutorial.mjs';
+import { chapters } from './src/tutorial/chapters.mjs';
+import { verifyChapters } from './src/tutorial/verify.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.join(root, 'dist');
@@ -76,6 +79,23 @@ const pages = [
   { title: 'Overview', slug: '', file: 'index.md' },
   ...specPages,
 ];
+
+// --- supported code extensions: from docs/code-tags.md's comment-family table,
+// so a language added upstream flows into the /learn/ new-file validation on
+// the next rebuild. Only table rows are scanned - prose mentions `.git` etc.
+const codeTagsMd = readFileSync(path.join(docsDir, 'code-tags.md'), 'utf8');
+const codeExtensions = [
+  ...new Set(
+    codeTagsMd
+      .split('\n')
+      .filter((line) => line.startsWith('|'))
+      .flatMap((line) => [...line.matchAll(/`(\.[a-z0-9]+)`/g)].map((m) => m[1])),
+  ),
+];
+if (codeExtensions.length === 0) {
+  console.error('error: no extensions found in docs/code-tags.md - the table format changed?');
+  process.exit(1);
+}
 const slugByName = new Map(pages.map((p) => [p.file.replace(/\.md$/, ''), p.slug]));
 
 // --- markdown rendering ------------------------------------------------------
@@ -174,6 +194,41 @@ function renderDoc(page) {
   });
 }
 
+// --- /learn/ runner: the release bundle, node builtins rewritten to shims ---
+
+// CI checks out the full tool repo, so dist/flashtrace.mjs sits next to the
+// docs the build already consumes. Locally the clone provides it the same way.
+const bundlePath = path.join(docsDir, '..', 'dist', 'flashtrace.mjs');
+if (!existsSync(bundlePath)) {
+  console.error(
+    `error: flashtrace bundle not found at ${bundlePath} - the /learn/ page runs the release build in the browser and needs it. ` +
+      'Make sure the tool repo checkout includes dist/.',
+  );
+  process.exit(1);
+}
+
+// The exact builtin set the shims in src/tutorial/shims/ cover. A release
+// that imports anything else (or drops one) must fail the build here, never
+// silently ship a broken /learn/ page.
+const SHIMMED_BUILTINS = ['child_process', 'fs', 'path', 'process', 'url'];
+
+function rewriteBundle(source) {
+  const found = new Set();
+  const rewritten = source.replace(/from "node:([a-z_]+)"/g, (m, name) => {
+    found.add(name);
+    return `from "./shims/${name}.mjs"`;
+  });
+  const actual = [...found].sort();
+  if (actual.join(',') !== SHIMMED_BUILTINS.join(',')) {
+    console.error(
+      `error: flashtrace.mjs imports node builtins [${actual.join(', ')}] but the /learn/ shims cover exactly [${SHIMMED_BUILTINS.join(', ')}].\n` +
+        'Align src/tutorial/shims/ (and this assertion) with the release bundle.',
+    );
+    process.exit(1);
+  }
+  return rewritten;
+}
+
 // --- emit --------------------------------------------------------------------
 
 rmSync(dist, { recursive: true, force: true });
@@ -193,9 +248,39 @@ for (const page of pages) {
   writeFileSync(path.join(dir, 'index.html'), renderDoc(page));
 }
 
+const learnDir = path.join(dist, 'learn');
+mkdirSync(learnDir, { recursive: true });
+writeFileSync(path.join(learnDir, 'flashtrace.mjs'), rewriteBundle(readFileSync(bundlePath, 'utf8')));
+cpSync(path.join(root, 'src', 'tutorial', 'shims'), path.join(learnDir, 'shims'), { recursive: true });
+cpSync(path.join(root, 'src', 'tutorial', 'chapter-utils.mjs'), path.join(learnDir, 'chapter-utils.mjs'));
+cpSync(path.join(root, 'src', 'scripts', 'tutorial.js'), path.join(learnDir, 'tutorial.js'));
+cpSync(path.join(root, 'src', 'scripts', 'tutorial-worker.js'), path.join(learnDir, 'tutorial-worker.js'));
+// tutorial.js is an entry that imports its engine from sibling ./tutorial-*.mjs
+// modules; the browser loads them flat next to it, so copy each one.
+for (const name of readdirSync(path.join(root, 'src', 'scripts'))) {
+  if (/^tutorial-.*\.mjs$/.test(name)) {
+    cpSync(path.join(root, 'src', 'scripts', name), path.join(learnDir, name));
+  }
+}
+cpSync(path.join(root, 'src', 'report-colors.mjs'), path.join(learnDir, 'report-colors.mjs'));
+cpSync(path.join(root, 'src', 'highlight.mjs'), path.join(learnDir, 'highlight.mjs'));
+
+// Every chapter's start state and each step's cumulative patched state runs
+// through the exact bundle the browser executes; behavioral drift in a
+// flashtrace release fails the deploy here instead of shipping a broken lesson.
+let verified;
+try {
+  verified = await verifyChapters(chapters, path.join(learnDir, 'flashtrace.mjs'), 'js');
+} catch (err) {
+  console.error(`error: tutorial chapter verification failed.\n${err.message}`);
+  process.exit(1);
+}
+writeFileSync(path.join(learnDir, 'index.html'), renderTutorial({ version, verified, codeExtensions }));
+
 const sitePaths = [
   '/',
   ...pages.map((p) => (p.slug ? `/docs/${p.slug}/` : '/docs/')),
+  '/learn/',
   '/license/',
   '/impressum/',
 ];

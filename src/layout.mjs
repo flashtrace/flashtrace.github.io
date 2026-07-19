@@ -16,25 +16,9 @@ export function esc(s) {
     .replaceAll('"', '&quot;');
 }
 
-// Wrap flashtrace's own syntax (IDs, [tags], >>, -->) in spans; input must be
-// HTML-escaped already. Generic code stays uncolored.
-//
-// Deliberately language-agnostic: it runs on every fenced block and codespan
-// regardless of its info string, because flashtrace tokens appear inside
-// blocks of any language (md, ts, sql, plain trace output, ...). The cost is
-// that an unrelated string shaped like an ID (foo:bar#1) in, say, a bash or
-// json block also gets colored - acceptable for these docs, where anything
-// ID-shaped in a code block is in practice a flashtrace reference.
-export function highlightTokens(escaped) {
-  return escaped.replace(
-    /(--&gt;)|(&gt;&gt;)|([A-Za-z]+:[A-Za-z0-9_/.-]*#[0-9xyz]+(?:\.[0-9xyz]+){0,2})|(^ *(?:Needs|Covers|Tags):)/gm,
-    (m, fwd, need, id, kw) => {
-      if (fwd || need) return `<span class="tk-arrow">${m}</span>`;
-      if (id) return `<span class="tk-id">${m}</span>`;
-      return `<span class="tk-kw">${kw}</span>`;
-    },
-  );
-}
+// highlightTokens lives in its own dependency-free module (the /learn/ page
+// also ships it to the browser); re-exported here for the build-side callers.
+export { highlightTokens } from './highlight.mjs';
 
 const themeInit = `(function(){try{var t=localStorage.getItem('ft-theme');if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='light';}})();`;
 
@@ -56,9 +40,11 @@ function topBar({ version, active, withSidebar }) {
     <a class="version-badge" href="${GITHUB_URL}/releases"${EXT_ATTRS} title="flashtrace release">${esc(version)}</a>
     <nav class="topbar-nav" aria-label="Site">
       ${link('/', 'Home', 'home')}
+      ${link('/learn/', 'Learn', 'tutorial')}
       ${link('/docs/', 'Docs', 'docs')}
     </nav>
     <div class="topbar-actions">
+      <a class="btn btn-primary btn-cta" href="/learn/#editor"${active === 'tutorial' ? ' aria-current="page"' : ''}>Try it out</a>
       <a class="icon-btn" href="${GITHUB_URL}"${EXT_ATTRS} aria-label="flashtrace on GitHub">${githubIcon}</a>
       <button class="icon-btn theme-toggle" aria-label="Toggle color theme">
         <span class="only-light">${moonIcon}</span><span class="only-dark">${sunIcon}</span>
