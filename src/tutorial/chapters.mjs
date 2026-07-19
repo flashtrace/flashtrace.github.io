@@ -494,8 +494,8 @@ export function login(email, password) {
     title: 'Forwarding',
     group: 'Features',
     intro:
-      'Sometimes a requirement should not name an implementation itself - the details belong to a design. A forwarding tag [source --> target] delegates the coverage obligation: the source is covered exactly as deeply as its target. The -v report draws the delegation as a → edge.',
-    goal: 'Delegate req:login#1 to the auth design instead of a dead-end need.',
+      'Sometimes a requirement should not name an implementation itself - the details belong to a design. A forwarding tag [source --> target] delegates the coverage obligation: the source is covered exactly as deeply as its target - shallow while the target is shallow, deep only once the target is deep. The -v report draws the delegation as a → edge.',
+    goal: 'Delegate req:login#1 to the auth design, then deepen the design so the requirement follows.',
     docs: [{ label: 'Forwarding', href: '/docs/forwarding/' }],
     argv: ['-v'],
     startsClean: false,
@@ -527,18 +527,24 @@ Needs: impl:auth#1`,
       js: {
         file: 'auth.js',
         body: `// [impl:auth#1]
+// [>>utest:auth#1]
 export function openSession(token) {
   return sessions.issue(token);
 }`,
         anchors: {},
-        snippets: {},
+        snippets: {
+          authTest: `\n// [utest:auth#1]
+test('auth issues a session', () => {
+  expect(openSession('tok')).toBeTruthy();
+});`,
+        },
       },
     },
     steps: [
       {
         title: 'Delegate to the design',
         explain:
-          'There is no impl:login#1 and there never will be - the auth design owns the details. Replace the Needs line with the forwarding tag [req:login#1 --> dsn:auth#2]: the requirement now follows the design\'s coverage, shown as a → edge in the report.',
+          'There is no impl:login#1 and there never will be - the auth design below owns the details. Replace the dead-end Needs line with the forwarding tag [req:login#1 --> dsn:auth#2]: the requirement drops its own obligation and follows the design instead, drawn as a → edge in the report. Run it - the design is only ~ shallow-covered right now, so the requirement inherits exactly that: shallow, not green yet.',
         pane: 'spec',
         anchor: 'deadEndNeeds',
         patch: { op: 'replaceLine', anchor: 'deadEndNeeds', snippet: 'forwardTag' },
@@ -546,6 +552,15 @@ export function openSession(token) {
           const q = r.items.find((i) => i.id === 'req:login#1');
           return q !== undefined && Boolean(q.forwardsTo);
         },
+      },
+      {
+        title: 'Deepen the design',
+        explain:
+          'Forwarding tracks the target\'s depth precisely, so deepen the design and the requirement moves with it. impl:auth#1 demands a utest nobody wrote yet - add the test and tag it "// [utest:auth#1]". The design turns ✔ deep-covered, and req:login#1, still just pointing at it, follows to deep-covered too - you never touched the requirement again.',
+        pane: 'code',
+        anchor: null,
+        patch: { op: 'append', snippet: 'authTest' },
+        check: (r) => r.items.some((i) => i.id === 'utest:auth#1'),
       },
     ],
     done: (r) => r.clean && r.items.some((i) => i.id === 'req:login#1' && Boolean(i.forwardsTo) && i.deepCovered),
