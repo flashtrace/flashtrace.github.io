@@ -1,16 +1,40 @@
 // Discovery of the machine-readable JSON Schemas the tool repo publishes under
 // schemas/. The files are served verbatim - consumers fetch them by $id, so
 // the bytes on the site must match the release exactly. Nothing here rewrites
-// a schema; the JSON is parsed only to reject a release that ships a broken
+// a schema; the JSON is parsed only to catch a release that ships a broken
 // one, since the URL is a published contract.
+//
+// Discovery reports rather than throws: a file it cannot serve is recorded as
+// a problem and left out of the result, so the caller can decide whether one
+// bad file is worth more than the schemas that are fine.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-// schemas/<name>/v<N>.<format> - the tool repo mirrors the URL layout it is
-// served at, so the on-disk path is also the site path. The format is read off
-// the extension rather than assumed, so a future schemas/report/v1.xml needs no
-// change here.
+// schemas/<name>/v<N>.<format>, exactly one directory deep. The tool repo
+// mirrors the URL layout it is served at, so the on-disk path is also the site
+// path - which stays true only while the site refuses to serve anything else.
 const VERSION_FILE = /^v(\d+)\.([A-Za-z0-9]+)$/;
+
+// latest.<format> is ours to generate from the highest version, so an upstream
+// copy is ignored rather than served: two sources disagreeing about which
+// version is current is the one thing the alias exists to prevent.
+const LATEST_FILE = /^latest\.[A-Za-z0-9]+$/i;
+
+// Serving a format means having decided how it is validated here and how the
+// docs generator renders it, so the list is explicit rather than "whatever
+// turns up". Adding 'xml' is a one-word change once a release ships one.
+const ALLOWED_FORMATS = new Set(['json']);
+
+// What a schemas/ folder legitimately holds for the tool repo's own sake: a
+// README explaining the folder to someone reading that repo, editor dotfiles,
+// a licence note. Not served, and not worth mentioning either.
+const LOCAL_FILE = /^(?:\.|LICENSE)|\.md$/i;
+
+// A name that was reaching for the version layout and missed - v1.2.json,
+// V0.json, report-v0.json, v0.json.bak. Worth reporting, because from here a
+// typo that quietly unpublishes a schema looks exactly like a file that was
+// never meant to be one.
+const NEAR_MISS = /v\d/i;
 
 // Sits next to docs/ in the tool repo, like LICENSE does. Absent until the
 // release that introduces it, so the caller decides whether that is fatal.
@@ -19,57 +43,97 @@ export function locateSchemas(docsDir) {
   return existsSync(dir) ? dir : null;
 }
 
-// One entry per (directory, format) pair, so a directory that ever holds both
-// v1.json and v1.xml keeps two independent version lines - and two latest.*
-// aliases - rather than one muddled one. Returns
-// [{ name, format, versions: [{ version, file, bytes, json }], latest }].
+// Returns { schemas, problems }. schemas is one entry per (folder, format)
+// pair, so a folder that ever holds both v1.json and v1.xml keeps two
+// independent version lines - and two latest.* aliases - rather than one
+// muddled one. problems is [{ path, reason }] naming every file that was found
+// and not served.
 export function collectSchemas(schemasDir) {
-  const out = [];
-  walk(schemasDir, schemasDir, out);
-  out.sort((a, b) => (a.name === b.name ? a.format.localeCompare(b.format) : a.name.localeCompare(b.name)));
-  return out;
-}
+  const schemas = [];
+  const problems = [];
 
-function walk(dir, rootDir, out) {
-  const byFormat = new Map();
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    const rel = path.relative(rootDir, full).split(path.sep).join('/');
+  for (const entry of readdirSync(schemasDir, { withFileTypes: true })) {
     if (entry.isDirectory()) {
-      walk(full, rootDir, out);
+      collectSchemaDir(path.join(schemasDir, entry.name), entry.name, schemas, problems);
       continue;
     }
-    // latest.<format> is ours to generate; upstream shipping one would mean
-    // two sources disagree about which version is current.
-    if (/^latest\.[A-Za-z0-9]+$/.test(entry.name)) {
-      throw new Error(
-        `${rel} exists upstream, but the site generates ${entry.name} itself. ` +
-          'Remove it upstream or drop the generation here - do not ship both.',
-      );
+    // A loose file at the top level is never served: the layout puts every
+    // schema under a folder that names it.
+    if (!LOCAL_FILE.test(entry.name) && NEAR_MISS.test(entry.name)) {
+      problems.push({
+        path: entry.name,
+        reason: 'sits outside a schemas/<name>/ folder, so it is not served',
+      });
     }
+  }
+
+  schemas.sort((a, b) =>
+    a.name === b.name ? a.format.localeCompare(b.format) : a.name.localeCompare(b.name),
+  );
+  problems.sort((a, b) => a.path.localeCompare(b.path));
+  return { schemas, problems };
+}
+
+function collectSchemaDir(dir, name, schemas, problems) {
+  const byFormat = new Map();
+
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const rel = `${name}/${entry.name}`;
+    const problem = (reason) => problems.push({ path: rel, reason });
+
+    if (entry.isDirectory()) {
+      problem('is nested deeper than schemas/<name>/, so nothing inside it is served');
+      continue;
+    }
+    // withFileTypes reports a link as a link, so this never reaches the copy -
+    // a symlink would survive the build but not the Pages artifact.
+    if (entry.isSymbolicLink()) {
+      problem('is a symlink, and schemas are published as real files, so it is not served');
+      continue;
+    }
+    if (LATEST_FILE.test(entry.name)) {
+      problem('is generated by the site from the highest version, so this copy is ignored');
+      continue;
+    }
+
     const m = VERSION_FILE.exec(entry.name);
-    if (!m) continue; // non-version files are still copied verbatim, just not aliased
+    if (!m) {
+      if (!LOCAL_FILE.test(entry.name) && NEAR_MISS.test(entry.name)) {
+        problem('does not match v<N>.<format>, so it is not served');
+      }
+      continue;
+    }
+
     const [, num, ext] = m;
     const format = ext.toLowerCase();
-    const bytes = readFileSync(full);
-    // Only the JSON documents are parsed - another format is served verbatim
-    // and this build has no opinion on its contents.
+    if (!ALLOWED_FORMATS.has(format)) {
+      problem(`is .${format}, and the site only serves ${[...ALLOWED_FORMATS].join(', ')}`);
+      continue;
+    }
+
+    const bytes = readFileSync(path.join(dir, entry.name));
+    // Only the JSON documents are parsed - another format, once allowed, is
+    // served verbatim and this build has no opinion on its contents.
     let json;
     if (format === 'json') {
       try {
         json = JSON.parse(bytes.toString('utf8'));
       } catch (err) {
-        throw new Error(`${rel} is not valid JSON: ${err.message}`);
+        problem(`is not valid JSON: ${err.message}`);
+        continue;
       }
     }
+
     if (!byFormat.has(format)) byFormat.set(format, []);
     byFormat.get(format).push({ version: Number(num), file: entry.name, bytes, json });
   }
 
-  const name = path.relative(rootDir, dir).split(path.sep).join('/');
   for (const [format, versions] of byFormat) {
     // Numeric, not lexical: v10 must sort above v9.
     versions.sort((a, b) => a.version - b.version);
-    out.push({ name, format, versions, latest: versions.at(-1) });
+    // latest follows the highest version that survived validation, so a broken
+    // v1 leaves the alias on v0 rather than on nothing. Serving the last good
+    // version is the lesser wrong, and the problem report says why it happened.
+    schemas.push({ name, format, versions, latest: versions.at(-1) });
   }
 }
