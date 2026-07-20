@@ -1,6 +1,10 @@
-// Curated interactive examples: real inputs and terminal output captured from
-// actual `flashtrace` runs (v0.7.0). No in-browser execution - the CLI needs
-// node:fs and git, so v1 ships pre-computed, trustworthy captures.
+// Interactive landing examples. The inputs and the terminal output are NOT
+// written here: they are pulled from the tool repo at build time - input files
+// from examples/<dir>/, and output from the byte-verified e2e snapshot
+// test/e2e-expect/<dir>.<variant>.txt (build.mjs::loadFeaturedExamples). This
+// keeps the site in lock-step with the released tool instead of drifting from
+// hand-captured snippets. This module owns only the curation (which examples to
+// feature, their titles and blurbs) and the CLI's output coloring.
 import { esc } from './layout.mjs';
 
 // Re-create the CLI's coloring (src/report.mjs in the tool repo) as HTML
@@ -35,140 +39,54 @@ export function colorizeReport(text) {
   return s;
 }
 
-export const heroTerminal = {
-  command: 'npx flashtrace',
-  output: `Summary
-  items       2  (1 from markdown, 1 from code)
-  ok          2
-  defective   0
+// The hero terminal mirrors the smallest clean example so the number shown on
+// the landing page always matches what the released CLI prints.
+export const HERO_SOURCE = { dir: 'basic', variant: 'default', args: [] };
 
-ok`,
-};
-
-export const examples = [
+// Featured scenarios, in display order. `dir` is the example project under the
+// tool repo's examples/; `variant`/`args` select the matching e2e snapshot
+// (test/e2e-expect/<dir>.<variant>.txt) and the CLI arguments to fall back to
+// if the snapshot is absent; `files` lists which of the project's files to show
+// (in order). Titles and blurbs are the site's own editorial layer.
+export const FEATURED = [
   {
     id: 'clean',
+    dir: 'basic',
+    variant: 'verbose',
+    args: ['-v'],
     title: 'A clean, deep-covered trace',
     blurb:
-      'A requirement needs an implementation at any 2.x revision; the wildcard resolves to impl:login#2.4 and the whole chain is deep-covered.',
-    command: 'flashtrace -v',
-    files: [
-      {
-        name: 'spec.md',
-        body: `## Login
-
-\`req:login#1\`
-
-Users can sign in with a session token.
-
-Needs: impl:login#2.x`,
-      },
-      {
-        name: 'login.ts',
-        body: `// [impl:login#2.4]
-export function login(token: SessionToken) {
-  return openSession(token);
-}`,
-      },
-    ],
-    output: `✔ impl:login#2.4  login.ts:1  [deep-covered]
-    wanted by req:login#1  spec.md:3
-
-✔ req:login#1 "Login"  spec.md:3  [deep-covered]
-    needs impl:login#2.x (→ impl:login#2.4)  ✔ login.ts:1
-
-Summary
-  items       2  (1 from markdown, 1 from code)
-  ok          2
-  defective   0
-
-ok`,
+      'The smallest complete setup: one Markdown requirement demands an implementation, the tag in login.ts fulfils it, and the whole chain is deep-covered.',
+    files: ['spec.md', 'login.ts'],
   },
   {
-    id: 'uncovered',
-    title: 'An uncovered defect',
+    id: 'revisions',
+    dir: 'revisions-and-forwarding',
+    variant: 'verbose',
+    args: ['-v'],
+    title: 'Revisions, wildcards & forwarding',
     blurb:
-      'The spec needs test:auth/login#2, but only revision 1 exists - flashtrace flags the revision mismatch, and the outdated test as unwanted.',
-    command: 'flashtrace',
-    files: [
-      {
-        name: 'spec.md',
-        body: `## Login requirement
-
-\`req:auth/login#1\`
-
-Users must be able to log in with email and password.
-
-Needs: impl:auth/login#1, test:auth/login#2`,
-      },
-      {
-        name: 'login.ts',
-        body: `// [impl:auth/login#1]
-export function login(email: string, password: string) {
-  return session.open(email, password);
-}
-
-// [test:auth/login#1]
-test('login opens a session', () => { ... });`,
-      },
-    ],
-    output: `✘ test:auth/login#1  login.ts:6
-    • unwanted: no item needs test:auth/login#1
-
-✘ req:auth/login#1 "Login requirement"  spec.md:3
-    • uncovered: needs test:auth/login#2, which does not exist (revision mismatch: existing revision(s) of test:auth/login: 1)
-
-Summary
-  items       3  (1 from markdown, 2 from code)
-  ok          1
-  defective   2
-
-not ok`,
+      'Exact multi-layer revisions, a wildcard need that resolves to impl:session/store#2.4.1, and a two-link forwarding chain that hands a requirement’s obligation down to the implementation.',
+    files: ['spec.md', 'store.ts', 'api.ts'],
   },
   {
-    id: 'forwarding',
-    title: 'Forwarding a requirement',
+    id: 'polyglot',
+    dir: 'polyglot-web',
+    variant: 'verbose',
+    args: ['-v'],
+    title: 'One trace, many languages',
     blurb:
-      'req:login#1 delegates its coverage obligation to the auth design with a --> tag; it is deep-covered exactly when dsn:auth#2 is.',
-    command: 'flashtrace -v',
-    files: [
-      {
-        name: 'spec.md',
-        body: `## Login
-
-\`req:login#1\`
-
-Login is specified in detail by the auth design.
-
-\`[req:login#1 --> dsn:auth#2]\`
-
-## Auth design
-
-\`dsn:auth#2\`
-
-Sessions are opened through the central auth service.
-
-Needs: impl:auth#1`,
-      },
-      {
-        name: 'auth.ts',
-        body: `// [impl:auth#1]
-export function openSession(token: SessionToken) { ... }`,
-      },
-    ],
-    output: `✔ impl:auth#1  auth.ts:1  [deep-covered]
-    wanted by dsn:auth#2  spec.md:11
-
-✔ req:login#1 "Login"  spec.md:3  [deep-covered]
-    → dsn:auth#2  ✔ spec.md:11
-✔ dsn:auth#2 "Auth design"  spec.md:11  [deep-covered]
-    needs impl:auth#1  ✔ auth.ts:1
-
-Summary
-  items       3  (2 from markdown, 1 from code)
-  ok          3
-  defective   0
-
-ok`,
+      'Tags live in ordinary comments - TypeScript, SQL, plain HTML and a Vue single-file component with template, script and style regions all trace in a single run.',
+    files: ['spec.md', 'metrics.ts', 'aggregation.sql', 'dashboard.vue'],
+  },
+  {
+    id: 'diagnostics',
+    dir: 'diagnostics',
+    variant: 'default',
+    args: [],
+    title: 'Every defect, caught',
+    blurb:
+      'An intentionally broken project: uncovered needs, orphaned and unwanted coverage, a revision mismatch, duplicate IDs and cyclic forwarding - each reported with its exact location, exit code 1.',
+    files: ['spec.md', 'unwanted.ts', 'orphan-need.ts'],
   },
 ];

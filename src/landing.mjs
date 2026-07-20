@@ -1,6 +1,8 @@
 // The landing page: hero with a CSS-built IDE mock, how-it-works, features,
-// curated interactive examples, install snippets. All static HTML.
-import { colorizeReport, examples, heroTerminal } from './examples.mjs';
+// curated interactive examples, install snippets. All static HTML. The example
+// inputs/outputs and the hero terminal are loaded from the tool repo by
+// build.mjs and passed in, so nothing here is hand-captured.
+import { colorizeReport } from './examples.mjs';
 import { esc, EXT_ATTRS, GITHUB_URL, highlightTokens, pageShell } from './layout.mjs';
 
 // --- hero IDE mock -----------------------------------------------------------
@@ -27,7 +29,7 @@ function windowDots() {
   return `<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>`;
 }
 
-function ideMock() {
+function ideMock(heroTerminal) {
   return `<div class="ide-mock" role="img" aria-label="Two editor panes - a Markdown spec defining req:auth/login#1 and a TypeScript file tagged [impl:auth/login#1]; a terminal below shows a clean flashtrace run ending in ok.">
   <div class="ide-chrome">
     ${windowDots()}
@@ -164,7 +166,7 @@ function exampleOutput(ex) {
 ${colorizeReport(ex.output)}</code></pre></div>`;
 }
 
-function examplesSection() {
+function examplesSection(examples, version) {
   const scenarioTabs = examples
     .map(
       (ex, i) =>
@@ -188,13 +190,14 @@ function examplesSection() {
     .join('\n    ');
   return `<section class="section" id="examples" aria-labelledby="examples-title">
   <h2 id="examples-title">See it trace</h2>
-  <p class="section-sub">Three scenarios, captured from real <code>flashtrace</code> runs. Flip each between its input files and the report it produces.</p>
+  <p class="section-sub">Real example projects from the tool repo. Flip each between its input files and the report it produces.</p>
   <div class="example-tabs" data-tabs>
     <div role="tablist" aria-label="Example scenarios">
       ${scenarioTabs}
     </div>
     ${scenarioPanels}
   </div>
+  <p class="ex-provenance">Inputs and output taken verbatim from flashtrace <strong>${esc(version)}</strong> - the reports are the same ones its end-to-end suite verifies byte-for-byte. <a href="${GITHUB_URL}/tree/${esc(version && version !== 'dev' ? version : 'main')}/examples"${EXT_ATTRS} class="ext-mark">Browse the examples</a>.</p>
 </section>`;
 }
 
@@ -225,7 +228,7 @@ npx flashtrace" aria-label="Copy install commands">Copy</button></div>
 
 // --- page ---------------------------------------------------------------------
 
-export function renderLanding({ version, gitRef }) {
+export function renderLanding({ version, gitRef, examples, heroTerminal }) {
   const body = `<main id="main">
 <section class="hero">
   <div class="hero-copy">
@@ -236,11 +239,11 @@ export function renderLanding({ version, gitRef }) {
       <a class="btn btn-secondary" href="${GITHUB_URL}"${EXT_ATTRS}>View on GitHub</a>
     </div>
   </div>
-  ${ideMock()}
+  ${ideMock(heroTerminal)}
 </section>
 ${howItWorks()}
 ${featureGrid()}
-${examplesSection()}
+${examplesSection(examples, version)}
 ${installSection(version, gitRef)}
 </main>`;
   return pageShell({

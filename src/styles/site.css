@@ -715,6 +715,19 @@ button {
   gap: 1rem;
 }
 
+/* real example files can be long (e.g. the diagnostics spec); keep any single
+   file window bounded and scrollable so it never stretches the section */
+.ex-files .mini-window .code {
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.ex-provenance {
+  margin: 1.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 /* install */
 
 .install-grid {

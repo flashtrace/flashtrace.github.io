@@ -1,12 +1,15 @@
 // Static site generator: renders the flashtrace tool repo's docs/ plus the
 // hand-written landing page into dist/. Pure Node + marked, no framework.
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import { Marked } from 'marked';
 
+import { FEATURED, HERO_SOURCE } from './src/examples.mjs';
 import { docShell, esc, EXT_ATTRS, GITHUB_URL, highlightTokens, SITE_URL } from './src/layout.mjs';
 import { renderLanding } from './src/landing.mjs';
 import { renderImpressum } from './src/impressum.mjs';
@@ -59,6 +62,62 @@ function readVersion() {
 const resolvedVersion = readVersion();
 const gitRef = resolvedVersion || 'main'; // for links into the tool repo on github.com
 const version = resolvedVersion || 'dev'; // display label (header badge, footer note)
+
+// --- featured examples: inputs from examples/, output from the e2e snapshot --
+//
+// The landing page examples are not hand-captured; they are pulled from the
+// tool repo (sibling of docs/) so they track the released version. Output comes
+// from the byte-verified snapshot the tool's own e2e suite asserts against; if
+// that snapshot is missing (older tool checkout), fall back to running the
+// shipped CLI over a throwaway copy of the example, isolated from git metadata.
+
+const examplesDir = path.join(docsDir, '..', 'examples');
+const snapshotsDir = path.join(docsDir, '..', 'test', 'e2e-expect');
+const cliPath = path.join(docsDir, '..', 'dist', 'flashtrace.mjs');
+
+function exampleOutput(dir, variant, args) {
+  const snapshot = path.join(snapshotsDir, `${dir}.${variant}.txt`);
+  if (existsSync(snapshot)) return readFileSync(snapshot, 'utf8');
+  if (existsSync(cliPath)) {
+    const tmp = mkdtempSync(path.join(os.tmpdir(), 'ft-example-'));
+    try {
+      cpSync(path.join(examplesDir, dir), tmp, { recursive: true });
+      const run = spawnSync(process.execPath, [cliPath, ...args], { cwd: tmp, encoding: 'utf8' });
+      if (typeof run.stdout === 'string' && run.stdout.length > 0) return run.stdout;
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  }
+  console.error(
+    `error: no output for example '${dir}': snapshot ${dir}.${variant}.txt not found and the CLI at ${cliPath} could not produce one.`,
+  );
+  process.exit(1);
+}
+
+function loadExample(ex) {
+  const files = ex.files.map((name) => {
+    const file = path.join(examplesDir, ex.dir, name);
+    if (!existsSync(file)) {
+      console.error(`error: featured example '${ex.dir}' is missing file '${name}' at ${file}`);
+      process.exit(1);
+    }
+    return { name, body: readFileSync(file, 'utf8').replace(/\n+$/, '') };
+  });
+  return {
+    id: ex.id,
+    title: ex.title,
+    blurb: ex.blurb,
+    command: `flashtrace ${ex.args.join(' ')}`.trim(),
+    files,
+    output: exampleOutput(ex.dir, ex.variant, ex.args).replace(/\n+$/, ''),
+  };
+}
+
+const featuredExamples = FEATURED.map(loadExample);
+const heroTerminal = {
+  command: 'npx flashtrace',
+  output: exampleOutput(HERO_SOURCE.dir, HERO_SOURCE.variant, HERO_SOURCE.args).replace(/\n+$/, ''),
+};
 
 // --- nav order: derived from docs/index.md, the single source of truth -----
 
@@ -179,7 +238,10 @@ function renderDoc(page) {
 rmSync(dist, { recursive: true, force: true });
 mkdirSync(dist, { recursive: true });
 
-writeFileSync(path.join(dist, 'index.html'), renderLanding({ version, gitRef }));
+writeFileSync(
+  path.join(dist, 'index.html'),
+  renderLanding({ version, gitRef, examples: featuredExamples, heroTerminal }),
+);
 
 mkdirSync(path.join(dist, 'impressum'), { recursive: true });
 writeFileSync(path.join(dist, 'impressum', 'index.html'), renderImpressum({ version }));
