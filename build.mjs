@@ -11,6 +11,7 @@ import { docShell, esc, EXT_ATTRS, GITHUB_URL, highlightTokens, SITE_URL } from 
 import { renderLanding } from './src/landing.mjs';
 import { renderImpressum } from './src/impressum.mjs';
 import { renderLicense } from './src/license.mjs';
+import { collectSchemas, locateSchemas } from './src/schemas.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.join(root, 'dist');
@@ -41,6 +42,28 @@ if (!existsSync(licensePath)) {
   process.exit(1);
 }
 const licenseText = readFileSync(licensePath, 'utf8');
+
+// --- schemas: published schemas, sitting next to docs/ in the tool repo ------
+
+// Absent until the release that introduces schemas/, so a missing folder only
+// warns - the rest of the site must keep deploying against older releases.
+// Once the folder exists, anything wrong with its contents is fatal.
+const schemasDir = locateSchemas(docsDir);
+let schemas = [];
+if (schemasDir) {
+  try {
+    schemas = collectSchemas(schemasDir);
+  } catch (err) {
+    console.error(`error: ${err.message}`);
+    process.exit(1);
+  }
+  if (schemas.length === 0) {
+    console.error(`error: ${schemasDir} holds no v<N>.<format> files - did the layout change?`);
+    process.exit(1);
+  }
+} else {
+  console.warn('warn: no schemas/ in the flashtrace checkout - skipping /schemas/.');
+}
 
 // --- version: release tag from env, else the tool repo's package.json ------
 
@@ -191,6 +214,24 @@ for (const page of pages) {
   const dir = page.slug ? path.join(dist, 'docs', page.slug) : path.join(dist, 'docs');
   mkdirSync(dir, { recursive: true });
   writeFileSync(path.join(dir, 'index.html'), renderDoc(page));
+}
+
+// Schemas are machine-consumed artifacts, not pages: copied byte-for-byte and
+// never through the markdown pipeline, whose link rewriting would corrupt the
+// identifiers ($id, $ref, $schema) inside them.
+if (schemasDir) {
+  cpSync(schemasDir, path.join(dist, 'schemas'), { recursive: true });
+  for (const schema of schemas) {
+    // A real file, not a redirect - GitHub Pages has no server-side redirects
+    // and a meta-refresh means nothing to a JSON fetch. The bytes are the
+    // highest version's verbatim, $id included: a copy fetched from
+    // latest.json must still say which version it actually is. One alias per
+    // format, so a v1.xml would get latest.xml alongside latest.json.
+    writeFileSync(
+      path.join(dist, 'schemas', schema.name, `latest.${schema.format}`),
+      schema.latest.bytes,
+    );
+  }
 }
 
 const sitePaths = [
