@@ -228,10 +228,10 @@ function versionSection(schemaEntry, entry, toc) {
   const parts = [];
   parts.push(heading(label, `Version ${version}`, 2));
 
-  const urls = [`<li><a href="/schemas/${schemaEntry.name}/${file}"><code>${esc(canonical)}</code></a></li>`];
+  const urls = [`<li><a href="/schemas/${schemaEntry.name}/${file}"><code class="schema-url">${esc(canonical)}</code></a></li>`];
   if (isLatest) {
     urls.push(
-      `<li><a href="/schemas/${schemaEntry.name}/latest.json"><code>${esc(`${SITE_URL}/schemas/${schemaEntry.name}/latest.json`)}</code></a> - byte-identical alias, moves with the highest version</li>`,
+      `<li><a href="/schemas/${schemaEntry.name}/latest.json"><code class="schema-url">${esc(`${SITE_URL}/schemas/${schemaEntry.name}/latest.json`)}</code></a> - byte-identical alias, moves with the highest version</li>`,
     );
   }
   parts.push(`<ul>${urls.join('')}</ul>`);
@@ -263,6 +263,12 @@ ${parts.join('\n')}
 
 // A <select>, not tabs: version counts grow without bound and a picker stays
 // one line at ten versions. Rendered only when there is something to pick.
+//
+// It sits on the title line rather than in the right rail: the rail is
+// display:none under 1100px, which would strand the only way to change version
+// on every tablet and phone. Option labels are short (v10) so the control fits
+// beside the heading, and they match the anchors (#v10) while the section
+// heading below still spells out "Version 10".
 function versionPicker(schema) {
   if (schema.versions.length < 2) return '';
   const options = [...schema.versions]
@@ -271,7 +277,7 @@ function versionPicker(schema) {
       const label = `v${entry.version}`;
       const suffix = entry === schema.latest ? ' (latest)' : '';
       const selected = entry === schema.latest ? ' selected' : '';
-      return `<option value="${label}"${selected}>Version ${entry.version}${suffix}</option>`;
+      return `<option value="${label}"${selected}>${label}${suffix}</option>`;
     })
     .join('\n    ');
   return `<div class="version-picker">
@@ -286,12 +292,14 @@ export function renderSchemaDoc({ schema, version, navGroups }) {
   const toc = [];
   // Newest version first: the current one is what a reader almost always wants.
   const sections = [...schema.versions].reverse().map((entry) => versionSection(schema, entry, toc));
-  const content = `<h1>${esc(schema.name)} schema</h1>
+  const content = `<div class="schema-header">
+<h1>${esc(schema.name)} schema</h1>
+${versionPicker(schema)}
+</div>
 <p>Machine-readable JSON Schema for the flashtrace <code>${esc(schema.name)}</code> document, served from
-<code>${esc(SITE_URL)}/schemas/${esc(schema.name)}/</code>. This page is generated from those files.</p>
+<code class="schema-url">${esc(SITE_URL)}/schemas/${esc(schema.name)}/</code>. This page is generated from those files.</p>
 <p>The version is bumped only by breaking changes - a field removed, renamed, re-typed, or a documented
 meaning changed. A new optional field does not bump it.</p>
-${versionPicker(schema)}
 ${sections.join('\n')}`;
 
   return docShell({
