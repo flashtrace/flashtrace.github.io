@@ -111,7 +111,17 @@ function collectSchemaDir(dir, name, schemas, problems) {
       continue;
     }
 
-    const bytes = readFileSync(path.join(dir, entry.name));
+    // An unreadable file is one more thing to skip, not a crash: it reads the
+    // same to a visitor as a broken one, and the report should say which file
+    // rather than leaving a bare EACCES to be traced back by hand.
+    let bytes;
+    try {
+      bytes = readFileSync(path.join(dir, entry.name));
+    } catch (err) {
+      problem(`could not be read: ${err.message}`);
+      continue;
+    }
+
     // Only the JSON documents are parsed - another format, once allowed, is
     // served verbatim and this build has no opinion on its contents.
     let json;
