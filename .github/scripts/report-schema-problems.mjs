@@ -83,13 +83,28 @@ const table = (problems) => [
 
 const runNote = (runUrl, verb) => (runUrl ? [`<sub>${verb} by [this run](${runUrl}).</sub>`] : []);
 
-export function issueBody({ version, served, problems, runUrl }) {
+// Two coordinates, because either one alone can lie about the cause. The
+// flashtrace version says which release the docs and schemas came from; the
+// site commit says which build read them. A schema most often comes back
+// because a PR here taught src/schemas.mjs a layout that changed on purpose -
+// that moves the commit and leaves the release untouched, so "resolved at
+// v1.2.3" against an earlier "problems at v1.2.3" would credit a release that
+// never changed and leave nobody able to see why it works now.
+const siteNote = (siteRef) => {
+  if (!siteRef?.sha) return '';
+  const short = siteRef.sha.slice(0, 7);
+  return siteRef.url ? ` (site [\`${short}\`](${siteRef.url}))` : ` (site \`${short}\`)`;
+};
+
+export const builtAt = ({ version, siteRef }) => `\`${version}\`${siteNote(siteRef)}`;
+
+export function issueBody({ version, siteRef, served, problems, runUrl }) {
   return [
     'Some files under `schemas/` are not being served by the site. The site itself deployed normally - this is only about the files below.',
     '',
     `**To fix:** correct it upstream in [flashtrace/flashtrace](${REPO_URL}) and cut a release, or adjust \`src/schemas.mjs\` here if the layout changed on purpose.`,
     '',
-    `### Not being served, as of \`${version}\``,
+    `### Not being served, as of ${builtAt({ version, siteRef })}`,
     '',
     ...table(problems),
     '',
@@ -102,9 +117,9 @@ export function issueBody({ version, served, problems, runUrl }) {
   ].join('\n');
 }
 
-export function resolvedBody({ version, runUrl }) {
+export function resolvedBody({ version, siteRef, runUrl }) {
   return [
-    `**Resolved.** Every file under \`schemas/\` is being served again as of \`${version}\`.`,
+    `**Resolved.** Every file under \`schemas/\` is being served again as of ${builtAt({ version, siteRef })}.`,
     '',
     'What was wrong, and when it changed, is in the comments below.',
     '',
@@ -112,8 +127,8 @@ export function resolvedBody({ version, runUrl }) {
   ].join('\n');
 }
 
-export function changeComment({ version, diff, runUrl }) {
-  const lines = [`Rebuilt at \`${version}\`, and the problems changed.`, ''];
+export function changeComment({ version, siteRef, diff, runUrl }) {
+  const lines = [`Rebuilt at ${builtAt({ version, siteRef })}, and the problems changed.`, ''];
   if (diff.added.length > 0) {
     lines.push(`**No longer served (${diff.added.length})**`, '', ...table(diff.added), '');
   }
@@ -132,8 +147,8 @@ export function changeComment({ version, diff, runUrl }) {
   return lines.join('\n');
 }
 
-export function closeComment({ version, resolved, runUrl }) {
-  const lines = [`Rebuilt at \`${version}\` with nothing skipped - closing.`, ''];
+export function closeComment({ version, siteRef, resolved, runUrl }) {
+  const lines = [`Rebuilt at ${builtAt({ version, siteRef })} with nothing skipped - closing.`, ''];
   if (resolved.length > 0) {
     lines.push(
       `**Served again (${resolved.length})**`,
@@ -148,8 +163,12 @@ export function closeComment({ version, resolved, runUrl }) {
 
 // Returns a short tag for what it did, so a caller can assert on the decision
 // rather than on log text.
-export function report({ data, gh, log = console.log, reportIssue = false, runUrl }) {
+export function report({ data, gh, log = console.log, reportIssue = false, runUrl, siteRef }) {
   const { version = 'unknown', schemas: served = 0, problems = [] } = data;
+  // Deliberately not part of the fingerprint: siteRef moves on every merge to
+  // main, so folding it in would make every unrelated deploy re-comment on an
+  // unchanged issue - the exact noise the fingerprint exists to prevent.
+  const built = { version, siteRef };
 
   // Annotations cost no permissions and land on the run itself, so they happen
   // whether or not this workflow may touch issues.
@@ -177,9 +196,9 @@ export function report({ data, gh, log = console.log, reportIssue = false, runUr
     }
     // Body first: a reader arriving from the close notification should not
     // find a table of problems that no longer exist.
-    gh('issue', 'edit', String(existing), '--body', resolvedBody({ version, runUrl }));
+    gh('issue', 'edit', String(existing), '--body', resolvedBody({ ...built, runUrl }));
     gh('issue', 'close', String(existing), '--comment',
-      closeComment({ version, resolved: previous ?? [], runUrl }));
+      closeComment({ ...built, resolved: previous ?? [], runUrl }));
     log(`clean build - closed #${existing}`);
     return 'closed';
   }
@@ -190,7 +209,7 @@ export function report({ data, gh, log = console.log, reportIssue = false, runUr
     gh('label', 'create', LABEL, '--color', 'd93f0b', '--force',
       '--description', 'A schema under schemas/ is not being served');
     gh('issue', 'create', '--title', TITLE, '--label', LABEL,
-      '--body', issueBody({ version, served, problems, runUrl }));
+      '--body', issueBody({ ...built, served, problems, runUrl }));
     log(`opened a tracking issue for ${problems.length} problem(s)`);
     return 'opened';
   }
@@ -200,9 +219,9 @@ export function report({ data, gh, log = console.log, reportIssue = false, runUr
     return 'unchanged';
   }
 
-  gh('issue', 'edit', String(existing), '--body', issueBody({ version, served, problems, runUrl }));
+  gh('issue', 'edit', String(existing), '--body', issueBody({ ...built, served, problems, runUrl }));
   gh('issue', 'comment', String(existing), '--body',
-    changeComment({ version, diff: diffProblems(previous ?? [], problems), runUrl }));
+    changeComment({ ...built, diff: diffProblems(previous ?? [], problems), runUrl }));
   log(`problem set changed - updated #${existing}`);
   return 'updated';
 }
@@ -218,13 +237,32 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     console.log(`no ${REPORT} - the build did not reach schema discovery, so there is nothing to report`);
     process.exit(0);
   }
-  const { GITHUB_SERVER_URL = 'https://github.com', GITHUB_REPOSITORY, GITHUB_RUN_ID } = process.env;
+  const {
+    GITHUB_SERVER_URL = 'https://github.com',
+    GITHUB_REPOSITORY,
+    GITHUB_RUN_ID,
+    GITHUB_SHA,
+  } = process.env;
+  // On a repository_dispatch from an upstream release this is the head of main,
+  // which is the right answer: it names the site code that did the deploying.
+  // Outside Actions, fall back to the checkout someone ran the build from.
+  const localSha = () => {
+    try {
+      return execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+    } catch {
+      return ''; // not a checkout, or no git - the version alone will have to do
+    }
+  };
+  const sha = GITHUB_SHA || localSha();
   report({
     data: JSON.parse(readFileSync(REPORT, 'utf8')),
     gh: (...args) => execFileSync('gh', args, { encoding: 'utf8' }).trim(),
     reportIssue: process.env.REPORT_ISSUE === '1',
     runUrl: GITHUB_REPOSITORY && GITHUB_RUN_ID
       ? `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`
+      : undefined,
+    siteRef: sha
+      ? { sha, url: GITHUB_REPOSITORY ? `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${sha}` : undefined }
       : undefined,
   });
 }
