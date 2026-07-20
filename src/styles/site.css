@@ -941,6 +941,72 @@ h3:hover .heading-anchor,
   color: var(--muted);
 }
 
+/* schema version picker: a JS-only control, so it does not exist without JS.
+   The .js class lands on <html> before first paint and the latest version is
+   already marked .is-current in the markup, so the page paints on the right
+   version instead of flashing every version and collapsing to one.
+   Scripting off: no picker, every version stacked newest first, all anchors
+   still reachable. */
+/* Title line, not the right rail: .toc is display:none under 1100px, which
+   would stand the picker on every tablet and phone. Wraps under the heading
+   when the two no longer fit side by side. */
+.schema-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  margin: 0 0 1rem;
+}
+
+.schema-header h1 {
+  margin: 0;
+}
+
+.version-picker {
+  display: none;
+}
+
+.js .version-picker {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+/* Canonical schema URLs are long and unbreakable, and would push the page
+   into a horizontal scroll on a phone. Scoped to these spans so ordinary
+   inline code still breaks only at sensible points. */
+.doc-content code.schema-url {
+  overflow-wrap: anywhere;
+}
+
+.version-picker label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.version-picker select {
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--text);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+}
+
+.version-picker select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.js .schema-version:not(.is-current),
+.js .toc li[data-version]:not(.is-current) {
+  display: none;
+}
+
 /* reveal-on-hover only where hover exists; touch devices get a
    permanently visible button, as there is no way to discover it otherwise */
 @media (hover: hover) {

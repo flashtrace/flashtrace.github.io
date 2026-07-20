@@ -36,7 +36,10 @@ export function highlightTokens(escaped) {
   );
 }
 
-const themeInit = `(function(){try{var t=localStorage.getItem('ft-theme');if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='light';}})();`;
+// Also marks the document as scripted before first paint, so a JS-only control
+// (the schema version picker) can be styled away when scripting is off, and
+// the version filtering it drives never flashes in.
+const themeInit = `(function(){document.documentElement.classList.add('js');try{var t=localStorage.getItem('ft-theme');if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='light';}})();`;
 
 const sunIcon = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>`;
 const moonIcon = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>`;
@@ -135,7 +138,9 @@ ${groupHtml}
 <div class="sidebar-backdrop" hidden></div>`;
 }
 
-// Right-rail "On this page" TOC from [{ id, text, level }] (h2/h3).
+// Right-rail "On this page" TOC from [{ id, text, level }] (h2/h3). An entry
+// may carry { version, current } to tie it to one section of a versioned page,
+// so the rail lists only what is on screen.
 function tocRail(toc) {
   if (!toc.length) return '<aside class="toc" aria-hidden="true"></aside>';
   return `<aside class="toc">
@@ -143,7 +148,11 @@ function tocRail(toc) {
     <p class="toc-label">On this page</p>
     <ul>
       ${toc
-        .map((h) => `<li class="toc-l${h.level}"><a href="#${h.id}">${h.text}</a></li>`)
+        .map((h) => {
+          const v = h.version ? ` data-version="${esc(h.version)}"` : '';
+          const cur = h.current ? ' is-current' : '';
+          return `<li class="toc-l${h.level}${cur}"${v}><a href="#${h.id}">${h.text}</a></li>`;
+        })
         .join('\n      ')}
     </ul>
   </nav>
