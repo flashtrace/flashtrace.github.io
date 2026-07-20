@@ -53,6 +53,15 @@ jobs:
         env:
           FLASHTRACE_REF: ${{ steps.ref.outputs.tag }}
 
+      # annotations only - REPORT_ISSUE is deliberately unset, because a PR
+      # should not file an issue about upstream content it did not touch.
+      # Filing belongs to the deploy; here this only makes a skipped schema
+      # visible while reviewing.
+      - name: Report skipped schemas
+        if: always()
+        continue-on-error: true
+        run: node .github/scripts/report-schema-problems.mjs
+
       # also exercised here so artifact packaging failures surface in CI,
       # not first during a deploy
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

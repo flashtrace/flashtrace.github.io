@@ -13,6 +13,8 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  # for the schema problem report in the build job below
+  issues: write
 
 concurrency:
   group: pages
@@ -64,6 +66,18 @@ jobs:
       - run: pnpm build
         env:
           FLASHTRACE_REF: ${{ steps.ref.outputs.tag }}
+
+      # The build skips a schema it cannot serve instead of failing, so without
+      # this a broken schema would ship as a green deploy and nobody would know.
+      # continue-on-error: reporting the problem must never become a worse
+      # problem than the one being reported.
+      - name: Report skipped schemas
+        if: always()
+        continue-on-error: true
+        run: node .github/scripts/report-schema-problems.mjs
+        env:
+          REPORT_ISSUE: '1'
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
