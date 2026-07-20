@@ -1,3 +1,4 @@
 node_modules/
 dist/
 flashtrace/
+schema-problems.json

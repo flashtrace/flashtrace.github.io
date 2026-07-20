@@ -15,6 +15,7 @@ import { collectSchemas, locateSchemas } from './src/schemas.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.join(root, 'dist');
+const schemaProblemsPath = path.join(root, 'schema-problems.json');
 
 // --- locate the tool repo's docs (env → CI checkout → local sibling) -------
 
@@ -47,7 +48,12 @@ const licenseText = readFileSync(licensePath, 'utf8');
 
 // Absent until the release that introduces schemas/, so a missing folder only
 // warns - the rest of the site must keep deploying against older releases.
-// Once the folder exists, anything wrong with its contents is fatal.
+//
+// A file the site cannot serve is skipped rather than fatal, and for the same
+// reason: one broken schema must not cost the deploy of every other schema,
+// nor of the docs, which have nothing to do with it. Skipping quietly would be
+// the wrong trade though - the skips are written to schemaProblemsPath below,
+// and CI turns that into a tracking issue.
 const schemasDir = locateSchemas(docsDir);
 let schemas = [];
 let schemaProblems = [];
@@ -58,9 +64,8 @@ if (schemasDir) {
     console.error(`error: could not read ${schemasDir}: ${err.message}`);
     process.exit(1);
   }
-  for (const p of schemaProblems) console.error(`error: schemas/${p.path} ${p.reason}`);
-  if (schemaProblems.length > 0) process.exit(1);
-  // An empty folder is not a failure: schemas/ can land upstream a release
+  for (const p of schemaProblems) console.warn(`warn: schemas/${p.path} ${p.reason}`);
+  // An empty folder is not a problem: schemas/ can land upstream a release
   // before the first schema inside it does.
   if (schemas.length === 0) {
     console.warn(`warn: ${schemasDir} holds no v<N>.json files - nothing to serve under /schemas/.`);
@@ -236,6 +241,14 @@ for (const schema of schemas) {
   // v1.xml would get latest.xml alongside latest.json.
   writeFileSync(path.join(dir, `latest.${schema.format}`), schema.latest.bytes);
 }
+
+// Outside dist/ - a build artifact for CI to read, not something to publish.
+// Written on every build, including a clean one: "no problems" has to be a
+// statement the workflow can act on, or it could never close a stale issue.
+writeFileSync(
+  schemaProblemsPath,
+  `${JSON.stringify({ version, schemas: schemas.length, problems: schemaProblems }, null, 2)}\n`,
+);
 
 const sitePaths = [
   '/',
