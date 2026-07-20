@@ -11,6 +11,8 @@ import { docShell, esc, EXT_ATTRS, GITHUB_URL, highlightTokens, SITE_URL } from 
 import { renderLanding } from './src/landing.mjs';
 import { renderImpressum } from './src/impressum.mjs';
 import { renderLicense } from './src/license.mjs';
+import { renderSchemaDoc } from './src/schema-doc.mjs';
+import { collectSchemas, locateSchemas } from './src/schemas.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.join(root, 'dist');
@@ -41,6 +43,28 @@ if (!existsSync(licensePath)) {
   process.exit(1);
 }
 const licenseText = readFileSync(licensePath, 'utf8');
+
+// --- schemas: published JSON Schemas, sitting next to docs/ in the tool repo -
+
+// Absent until the release that introduces schemas/, so a missing folder only
+// warns - the rest of the site must keep deploying against older releases.
+// Once the folder exists, anything wrong with its contents is fatal.
+const schemasDir = locateSchemas(docsDir);
+let schemas = [];
+if (schemasDir) {
+  try {
+    schemas = collectSchemas(schemasDir);
+  } catch (err) {
+    console.error(`error: ${err.message}`);
+    process.exit(1);
+  }
+  if (schemas.length === 0) {
+    console.error(`error: ${schemasDir} holds no v<N>.json files - did the layout change?`);
+    process.exit(1);
+  }
+} else {
+  console.warn('warn: no schemas/ in the flashtrace checkout - skipping /schemas/ and /docs/schemas/.');
+}
 
 // --- version: release tag from env, else the tool repo's package.json ------
 
@@ -141,34 +165,51 @@ const marked = new Marked({
   },
 });
 
+// Shared by the markdown docs and the generated schema pages, so both render
+// the same sidebar. `current` is { slug } for a doc page, { schema } for a
+// schema page - a schema page has no slug, so no doc entry matches.
+function navGroups(current) {
+  const groups = [
+    {
+      label: 'Getting started',
+      items: [{ title: 'Usage Guide', href: '/docs/usage/', current: current.slug === 'usage' }],
+    },
+    {
+      label: 'Specification',
+      items: [
+        { title: 'Overview', href: '/docs/', current: current.slug === '' },
+        ...specPages.map((p) => ({
+          title: p.title,
+          href: `/docs/${p.slug}/`,
+          current: p.slug === current.slug,
+        })),
+      ],
+    },
+  ];
+  if (schemas.length > 0) {
+    groups.push({
+      label: 'Schemas',
+      items: schemas.map((s) => ({
+        title: s.name,
+        href: `/docs/schemas/${s.name}/`,
+        current: s.name === current.schema,
+      })),
+    });
+  }
+  return groups;
+}
+
 function renderDoc(page) {
   state.toc = [];
   state.slugCounts = new Map();
   const md = readFileSync(path.join(docsDir, page.file), 'utf8');
   const content = marked.parse(md);
-  const navGroups = [
-    {
-      label: 'Getting started',
-      items: [{ title: 'Usage Guide', href: '/docs/usage/', current: page.slug === 'usage' }],
-    },
-    {
-      label: 'Specification',
-      items: [
-        { title: 'Overview', href: '/docs/', current: page.slug === '' },
-        ...specPages.map((p) => ({
-          title: p.title,
-          href: `/docs/${p.slug}/`,
-          current: p.slug === page.slug,
-        })),
-      ],
-    },
-  ];
   return docShell({
     title: `${page.title} · flashtrace`,
     description: `flashtrace documentation - ${page.title}.`,
     path: page.slug ? `/docs/${page.slug}/` : '/docs/',
     version,
-    navGroups,
+    navGroups: navGroups({ slug: page.slug }),
     toc: state.toc,
     content,
   });
@@ -193,9 +234,36 @@ for (const page of pages) {
   writeFileSync(path.join(dir, 'index.html'), renderDoc(page));
 }
 
+// Schemas are machine-consumed artifacts, not pages: copied byte-for-byte and
+// never through the markdown pipeline, whose link rewriting would corrupt the
+// identifiers ($id, $ref, $schema) inside them.
+if (schemasDir) {
+  cpSync(schemasDir, path.join(dist, 'schemas'), { recursive: true });
+  for (const schema of schemas) {
+    // A real file, not a redirect - GitHub Pages has no server-side redirects
+    // and a meta-refresh means nothing to a JSON fetch. The bytes are the
+    // highest version's verbatim, $id included: a copy fetched from
+    // latest.json must still say which version it actually is.
+    writeFileSync(path.join(dist, 'schemas', schema.name, 'latest.json'), schema.latest.bytes);
+
+    const dir = path.join(dist, 'docs', 'schemas', schema.name);
+    mkdirSync(dir, { recursive: true });
+    try {
+      writeFileSync(
+        path.join(dir, 'index.html'),
+        renderSchemaDoc({ schema, version, navGroups: navGroups({ schema: schema.name }) }),
+      );
+    } catch (err) {
+      console.error(`error: rendering /docs/schemas/${schema.name}/ failed.\n${err.message}`);
+      process.exit(1);
+    }
+  }
+}
+
 const sitePaths = [
   '/',
   ...pages.map((p) => (p.slug ? `/docs/${p.slug}/` : '/docs/')),
+  ...schemas.map((s) => `/docs/schemas/${s.name}/`),
   '/license/',
   '/impressum/',
 ];
@@ -212,4 +280,6 @@ cpSync(path.join(root, 'public'), dist, { recursive: true });
 cpSync(path.join(root, 'src', 'styles', 'site.css'), path.join(dist, 'site.css'));
 cpSync(path.join(root, 'src', 'scripts', 'site.js'), path.join(dist, 'site.js'));
 
-console.log(`built ${pages.length + 3} pages into dist/ (flashtrace ${version || 'unknown version'})`);
+console.log(
+  `built ${pages.length + schemas.length + 3} pages into dist/ (flashtrace ${version || 'unknown version'})`,
+);
