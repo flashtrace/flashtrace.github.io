@@ -1,8 +1,8 @@
 // Discovery of the machine-readable JSON Schemas the tool repo publishes under
 // schemas/. The files are served verbatim - consumers fetch them by $id, so
-// the bytes on the site must match the release exactly. Nothing here rewrites
-// a schema; the JSON is parsed only to reject a release that ships a broken
-// one, since the URL is a published contract.
+// the bytes on the site must match the release exactly. Nothing here parses
+// for rewriting; the JSON is read only to reject a broken release and to
+// render the docs page from it.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -11,6 +11,17 @@ import path from 'node:path';
 // the extension rather than assumed, so a future schemas/report/v1.xml needs no
 // change here.
 const VERSION_FILE = /^v(\d+)\.([A-Za-z0-9]+)$/;
+
+// "report" + json -> "Report JSON". The directory names the schema, the
+// extension names the format, and the page is titled from both.
+function displayTitle(name, format) {
+  const words = name
+    .split(/[/_-]+/)
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(' ');
+  return `${words} ${format.toUpperCase()}`;
+}
 
 // Sits next to docs/ in the tool repo, like LICENSE does. Absent until the
 // release that introduces it, so the caller decides whether that is fatal.
@@ -21,12 +32,13 @@ export function locateSchemas(docsDir) {
 
 // One entry per (directory, format) pair, so a directory that ever holds both
 // v1.json and v1.xml keeps two independent version lines - and two latest.*
-// aliases - rather than one muddled one. Returns
-// [{ name, format, versions: [{ version, file, bytes, json }], latest }].
+// aliases - rather than one muddled one, and "Report JSON" and "Report XML"
+// rather than one muddled page. Returns
+// [{ name, format, slug, title, versions: [{ version, file, bytes, json }], latest }].
 export function collectSchemas(schemasDir) {
   const out = [];
   walk(schemasDir, schemasDir, out);
-  out.sort((a, b) => (a.name === b.name ? a.format.localeCompare(b.format) : a.name.localeCompare(b.name)));
+  out.sort((a, b) => a.title.localeCompare(b.title));
   return out;
 }
 
@@ -53,7 +65,7 @@ function walk(dir, rootDir, out) {
     const format = ext.toLowerCase();
     const bytes = readFileSync(full);
     // Only the JSON documents are parsed - another format is served verbatim
-    // and this build has no opinion on its contents.
+    // and the build decides separately whether it can render a page for it.
     let json;
     if (format === 'json') {
       try {
@@ -70,6 +82,17 @@ function walk(dir, rootDir, out) {
   for (const [format, versions] of byFormat) {
     // Numeric, not lexical: v10 must sort above v9.
     versions.sort((a, b) => a.version - b.version);
-    out.push({ name, format, versions, latest: versions.at(-1) });
+    out.push({
+      name,
+      format,
+      // Page slug: /docs/schemas/report-json/. Two formats of one schema get
+      // their own page instead of fighting over /docs/schemas/report/. The
+      // pairing is unambiguous because a format is [A-Za-z0-9]+ and so cannot
+      // contain the separating dash.
+      slug: `${name}-${format}`,
+      title: displayTitle(name, format),
+      versions,
+      latest: versions.at(-1),
+    });
   }
 }

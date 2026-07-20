@@ -107,6 +107,58 @@
     pre.appendChild(btn);
   });
 
+  // --- schema version picker ---
+  // Every version is in the page; this only chooses which one is displayed,
+  // so deep links like #v1 and #v1-item keep working and Ctrl-F still finds
+  // the version you are looking at. Without JS the picker is styled away and
+  // all versions render stacked, newest first.
+  var picker = document.querySelector('[data-version-picker]');
+  if (picker) {
+    // sections and their TOC entries both carry data-version
+    var versioned = document.querySelectorAll('[data-version]');
+
+    function showVersion(v) {
+      var found = false;
+      versioned.forEach(function (el) {
+        var on = el.getAttribute('data-version') === v;
+        el.classList.toggle('is-current', on);
+        if (on) found = true;
+      });
+      if (found) picker.value = v;
+      return found;
+    }
+
+    // #v2 names a version outright; #v2-item names a heading inside one.
+    function versionFromHash() {
+      var id = location.hash.slice(1);
+      if (!id) return '';
+      var target = document.getElementById(id);
+      var section = target && target.closest('[data-version]');
+      return section ? section.getAttribute('data-version') : '';
+    }
+
+    var initial = versionFromHash();
+    if (initial && showVersion(initial)) {
+      // The browser already tried to scroll here while the section was still
+      // hidden, which did nothing - so scroll again now that it is visible.
+      var target = document.getElementById(location.hash.slice(1));
+      if (target) target.scrollIntoView();
+    }
+
+    picker.addEventListener('change', function () {
+      if (!showVersion(picker.value)) return;
+      // replaceState, not location.hash: no history entry, no scroll jump
+      history.replaceState(null, '', '#' + picker.value);
+      // the TOC flow marker measures rects, which just changed underneath it
+      window.dispatchEvent(new Event('resize'));
+    });
+
+    window.addEventListener('hashchange', function () {
+      var v = versionFromHash();
+      if (v) showVersion(v);
+    });
+  }
+
   // --- right-rail TOC flow indicator ---
   // A single rail marker whose top/height track the projection of the visible
   // document window onto the TOC entries, so the highlight "flows" across the
@@ -140,12 +192,21 @@
         var barTop = Infinity;
         var barBottom = -Infinity;
 
-        for (var i = 0; i < sections.length; i++) {
-          var s = sections[i];
+        // On a versioned page most sections are display:none and have no box
+        // at all. Drop them first: a zero rect would otherwise read as a
+        // section sitting at the top of the document and drag the marker there.
+        var shown = [];
+        for (var j = 0; j < sections.length; j++) {
+          if (sections[j].heading.getClientRects().length) shown.push(sections[j]);
+          else sections[j].link.classList.remove('is-active');
+        }
+
+        for (var i = 0; i < shown.length; i++) {
+          var s = shown[i];
           var secTop = s.heading.getBoundingClientRect().top + scrollY;
           var secBottom =
-            i + 1 < sections.length
-              ? sections[i + 1].heading.getBoundingClientRect().top + scrollY
+            i + 1 < shown.length
+              ? shown[i + 1].heading.getBoundingClientRect().top + scrollY
               : contentBottom;
           var secH = Math.max(secBottom - secTop, 1);
 
