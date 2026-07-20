@@ -44,7 +44,7 @@ if (!existsSync(licensePath)) {
 }
 const licenseText = readFileSync(licensePath, 'utf8');
 
-// --- schemas: published JSON Schemas, sitting next to docs/ in the tool repo -
+// --- schemas: published schemas, sitting next to docs/ in the tool repo ------
 
 // Absent until the release that introduces schemas/, so a missing folder only
 // warns - the rest of the site must keep deploying against older releases.
@@ -59,11 +59,42 @@ if (schemasDir) {
     process.exit(1);
   }
   if (schemas.length === 0) {
-    console.error(`error: ${schemasDir} holds no v<N>.json files - did the layout change?`);
+    console.error(`error: ${schemasDir} holds no v<N>.<format> files - did the layout change?`);
     process.exit(1);
   }
-} else {
+}
+if (!schemasDir) {
   console.warn('warn: no schemas/ in the flashtrace checkout - skipping /schemas/ and /docs/schemas/.');
+}
+
+// Serving is format-agnostic - every schema file is copied verbatim whatever
+// its extension. Rendering is not: src/schema-doc.mjs reads JSON Schema. A
+// format we cannot render is still published, just without a docs page, and
+// says so loudly rather than vanishing.
+const documented = schemas.filter((s) => s.format === 'json');
+for (const s of schemas) {
+  if (s.format !== 'json') {
+    console.warn(
+      `warn: ${s.title} (schemas/${s.name}/v*.${s.format}) is served but not documented - ` +
+        'src/schema-doc.mjs renders JSON Schema only.',
+    );
+  }
+}
+
+// Doc pages live at /docs/schemas/<name>/, which has no room for two formats
+// of one schema. Unreachable while only JSON renders; the guard is here so the
+// day a second renderer lands, the URL scheme gets decided rather than one
+// page silently overwriting the other.
+const byPath = new Map();
+for (const s of documented) {
+  if (byPath.has(s.name)) {
+    console.error(
+      `error: ${s.title} and ${byPath.get(s.name).title} would both render to /docs/schemas/${s.name}/. ` +
+        'Give the page path a format segment before shipping a second renderable format.',
+    );
+    process.exit(1);
+  }
+  byPath.set(s.name, s);
 }
 
 // --- version: release tag from env, else the tool repo's package.json ------
@@ -186,11 +217,11 @@ function navGroups(current) {
       ],
     },
   ];
-  if (schemas.length > 0) {
+  if (documented.length > 0) {
     groups.push({
       label: 'Schemas',
-      items: schemas.map((s) => ({
-        title: s.name,
+      items: documented.map((s) => ({
+        title: s.title,
         href: `/docs/schemas/${s.name}/`,
         current: s.name === current.schema,
       })),
@@ -243,9 +274,14 @@ if (schemasDir) {
     // A real file, not a redirect - GitHub Pages has no server-side redirects
     // and a meta-refresh means nothing to a JSON fetch. The bytes are the
     // highest version's verbatim, $id included: a copy fetched from
-    // latest.json must still say which version it actually is.
-    writeFileSync(path.join(dist, 'schemas', schema.name, 'latest.json'), schema.latest.bytes);
-
+    // latest.json must still say which version it actually is. One alias per
+    // format, so v1.xml would get latest.xml alongside latest.json.
+    writeFileSync(
+      path.join(dist, 'schemas', schema.name, `latest.${schema.format}`),
+      schema.latest.bytes,
+    );
+  }
+  for (const schema of documented) {
     const dir = path.join(dist, 'docs', 'schemas', schema.name);
     mkdirSync(dir, { recursive: true });
     try {
@@ -263,7 +299,7 @@ if (schemasDir) {
 const sitePaths = [
   '/',
   ...pages.map((p) => (p.slug ? `/docs/${p.slug}/` : '/docs/')),
-  ...schemas.map((s) => `/docs/schemas/${s.name}/`),
+  ...documented.map((s) => `/docs/schemas/${s.name}/`),
   '/license/',
   '/impressum/',
 ];
@@ -281,5 +317,5 @@ cpSync(path.join(root, 'src', 'styles', 'site.css'), path.join(dist, 'site.css')
 cpSync(path.join(root, 'src', 'scripts', 'site.js'), path.join(dist, 'site.js'));
 
 console.log(
-  `built ${pages.length + schemas.length + 3} pages into dist/ (flashtrace ${version || 'unknown version'})`,
+  `built ${pages.length + documented.length + 3} pages into dist/ (flashtrace ${version || 'unknown version'})`,
 );

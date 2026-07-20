@@ -293,7 +293,7 @@ export function renderSchemaDoc({ schema, version, navGroups }) {
   // Newest version first: the current one is what a reader almost always wants.
   const sections = [...schema.versions].reverse().map((entry) => versionSection(schema, entry, toc));
   const content = `<div class="schema-header">
-<h1>${esc(schema.name)} schema</h1>
+<h1>${esc(schema.title)}</h1>
 ${versionPicker(schema)}
 </div>
 <p>Machine-readable JSON Schema for the flashtrace <code>${esc(schema.name)}</code> document, served from
@@ -303,7 +303,7 @@ meaning changed. A new optional field does not bump it.</p>
 ${sections.join('\n')}`;
 
   return docShell({
-    title: `${schema.name} schema · flashtrace`,
+    title: `${schema.title} schema · flashtrace`,
     description: `JSON Schema reference for the flashtrace ${schema.name} document.`,
     path: `/docs/schemas/${schema.name}/`,
     version,

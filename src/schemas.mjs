@@ -5,9 +5,22 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-// schemas/<name>/v<N>.json - the tool repo mirrors the URL layout it is served
-// at, so the on-disk path is also the site path.
-const VERSION_FILE = /^v(\d+)\.json$/;
+// schemas/<name>/v<N>.<format> - the tool repo mirrors the URL layout it is
+// served at, so the on-disk path is also the site path. The format is read off
+// the extension rather than assumed, so a future schemas/report/v1.xml needs no
+// change here.
+const VERSION_FILE = /^v(\d+)\.([A-Za-z0-9]+)$/;
+
+// "report" + json -> "Report JSON". The directory names the schema, the
+// extension names the format, and the page is titled from both.
+function displayTitle(name, format) {
+  const words = name
+    .split(/[/_-]+/)
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(' ');
+  return `${words} ${format.toUpperCase()}`;
+}
 
 // Sits next to docs/ in the tool repo, like LICENSE does. Absent until the
 // release that introduces it, so the caller decides whether that is fatal.
@@ -16,48 +29,63 @@ export function locateSchemas(docsDir) {
   return existsSync(dir) ? dir : null;
 }
 
-// Every directory holding v<N>.json files becomes one schema with one or more
-// versions. Returns [{ name, versions: [{ version, file, bytes, json }], latest }].
+// One schema per (directory, format) pair, so a directory that ever holds both
+// v1.json and v1.xml yields "Report JSON" and "Report XML" rather than one
+// muddled page. Returns
+// [{ name, format, title, versions: [{ version, file, bytes, json }], latest }].
 export function collectSchemas(schemasDir) {
   const out = [];
   walk(schemasDir, schemasDir, out);
-  out.sort((a, b) => a.name.localeCompare(b.name));
+  out.sort((a, b) => a.title.localeCompare(b.title));
   return out;
 }
 
 function walk(dir, rootDir, out) {
-  const versions = [];
+  const byFormat = new Map();
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
+    const rel = path.relative(rootDir, full).split(path.sep).join('/');
     if (entry.isDirectory()) {
       walk(full, rootDir, out);
       continue;
     }
-    // latest.json is ours to generate; upstream shipping one would mean two
-    // sources disagree about which version is current.
-    if (entry.name === 'latest.json') {
+    // latest.<format> is ours to generate; upstream shipping one would mean
+    // two sources disagree about which version is current.
+    if (/^latest\.[A-Za-z0-9]+$/.test(entry.name)) {
       throw new Error(
-        `${path.relative(rootDir, full)} exists upstream, but the site generates latest.json itself. ` +
+        `${rel} exists upstream, but the site generates ${entry.name} itself. ` +
           'Remove it upstream or drop the generation here - do not ship both.',
       );
     }
     const m = VERSION_FILE.exec(entry.name);
     if (!m) continue; // non-version files are still copied verbatim, just not rendered
+    const [, num, ext] = m;
+    const format = ext.toLowerCase();
     const bytes = readFileSync(full);
+    // Only the JSON documents are parsed - another format is served verbatim
+    // and the build decides separately whether it can render a page for it.
     let json;
-    try {
-      json = JSON.parse(bytes.toString('utf8'));
-    } catch (err) {
-      throw new Error(`${path.relative(rootDir, full)} is not valid JSON: ${err.message}`);
+    if (format === 'json') {
+      try {
+        json = JSON.parse(bytes.toString('utf8'));
+      } catch (err) {
+        throw new Error(`${rel} is not valid JSON: ${err.message}`);
+      }
     }
-    versions.push({ version: Number(m[1]), file: entry.name, bytes, json });
+    if (!byFormat.has(format)) byFormat.set(format, []);
+    byFormat.get(format).push({ version: Number(num), file: entry.name, bytes, json });
   }
-  if (versions.length === 0) return;
-  // Numeric, not lexical: v10 must sort above v9.
-  versions.sort((a, b) => a.version - b.version);
-  out.push({
-    name: path.relative(rootDir, dir).split(path.sep).join('/'),
-    versions,
-    latest: versions[versions.length - 1],
-  });
+
+  const name = path.relative(rootDir, dir).split(path.sep).join('/');
+  for (const [format, versions] of byFormat) {
+    // Numeric, not lexical: v10 must sort above v9.
+    versions.sort((a, b) => a.version - b.version);
+    out.push({
+      name,
+      format,
+      title: displayTitle(name, format),
+      versions,
+      latest: versions.at(-1),
+    });
+  }
 }
