@@ -81,22 +81,6 @@ for (const s of schemas) {
   }
 }
 
-// Doc pages live at /docs/schemas/<name>/, which has no room for two formats
-// of one schema. Unreachable while only JSON renders; the guard is here so the
-// day a second renderer lands, the URL scheme gets decided rather than one
-// page silently overwriting the other.
-const byPath = new Map();
-for (const s of documented) {
-  if (byPath.has(s.name)) {
-    console.error(
-      `error: ${s.title} and ${byPath.get(s.name).title} would both render to /docs/schemas/${s.name}/. ` +
-        'Give the page path a format segment before shipping a second renderable format.',
-    );
-    process.exit(1);
-  }
-  byPath.set(s.name, s);
-}
-
 // --- version: release tag from env, else the tool repo's package.json ------
 
 function readVersion() {
@@ -222,8 +206,8 @@ function navGroups(current) {
       label: 'Schemas',
       items: documented.map((s) => ({
         title: s.title,
-        href: `/docs/schemas/${s.name}/`,
-        current: s.name === current.schema,
+        href: `/docs/schemas/${s.slug}/`,
+        current: s.slug === current.schema,
       })),
     });
   }
@@ -282,15 +266,15 @@ if (schemasDir) {
     );
   }
   for (const schema of documented) {
-    const dir = path.join(dist, 'docs', 'schemas', schema.name);
+    const dir = path.join(dist, 'docs', 'schemas', schema.slug);
     mkdirSync(dir, { recursive: true });
     try {
       writeFileSync(
         path.join(dir, 'index.html'),
-        renderSchemaDoc({ schema, version, navGroups: navGroups({ schema: schema.name }) }),
+        renderSchemaDoc({ schema, version, navGroups: navGroups({ schema: schema.slug }) }),
       );
     } catch (err) {
-      console.error(`error: rendering /docs/schemas/${schema.name}/ failed.\n${err.message}`);
+      console.error(`error: rendering /docs/schemas/${schema.slug}/ failed.\n${err.message}`);
       process.exit(1);
     }
   }
@@ -299,7 +283,7 @@ if (schemasDir) {
 const sitePaths = [
   '/',
   ...pages.map((p) => (p.slug ? `/docs/${p.slug}/` : '/docs/')),
-  ...documented.map((s) => `/docs/schemas/${s.name}/`),
+  ...documented.map((s) => `/docs/schemas/${s.slug}/`),
   '/license/',
   '/impressum/',
 ];

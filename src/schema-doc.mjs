@@ -305,7 +305,7 @@ ${sections.join('\n')}`;
   return docShell({
     title: `${schema.title} schema · flashtrace`,
     description: `JSON Schema reference for the flashtrace ${schema.name} document.`,
-    path: `/docs/schemas/${schema.name}/`,
+    path: `/docs/schemas/${schema.slug}/`,
     version,
     navGroups,
     toc,

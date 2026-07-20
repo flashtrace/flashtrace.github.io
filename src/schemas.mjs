@@ -32,7 +32,7 @@ export function locateSchemas(docsDir) {
 // One schema per (directory, format) pair, so a directory that ever holds both
 // v1.json and v1.xml yields "Report JSON" and "Report XML" rather than one
 // muddled page. Returns
-// [{ name, format, title, versions: [{ version, file, bytes, json }], latest }].
+// [{ name, format, slug, title, versions: [{ version, file, bytes, json }], latest }].
 export function collectSchemas(schemasDir) {
   const out = [];
   walk(schemasDir, schemasDir, out);
@@ -83,6 +83,11 @@ function walk(dir, rootDir, out) {
     out.push({
       name,
       format,
+      // Page slug: /docs/schemas/report-json/. Two formats of one schema get
+      // their own page instead of fighting over /docs/schemas/report/. The
+      // pairing is unambiguous because a format is [A-Za-z0-9]+ and so cannot
+      // contain the separating dash.
+      slug: `${name}-${format}`,
       title: displayTitle(name, format),
       versions,
       latest: versions.at(-1),
