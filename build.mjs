@@ -11,6 +11,7 @@ import { docShell, esc, EXT_ATTRS, GITHUB_URL, highlightTokens, SITE_URL } from 
 import { renderLanding } from './src/landing.mjs';
 import { renderImpressum } from './src/impressum.mjs';
 import { renderLicense } from './src/license.mjs';
+import { renderSchemaDoc } from './src/schema-doc.mjs';
 import { collectSchemas, locateSchemas } from './src/schemas.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -68,7 +69,21 @@ if (schemasDir) {
     console.warn(`warn: ${schemasDir} holds no v<N>.json files - nothing to serve under /schemas/.`);
   }
 } else {
-  console.warn('warn: no schemas/ in the flashtrace checkout - skipping /schemas/.');
+  console.warn('warn: no schemas/ in the flashtrace checkout - skipping /schemas/ and /docs/schemas/.');
+}
+
+// Serving is format-agnostic - every schema file is copied verbatim whatever
+// its extension. Rendering is not: src/schema-doc.mjs reads JSON Schema. A
+// format we cannot render is still published, just without a docs page, and
+// says so loudly rather than vanishing.
+const documented = schemas.filter((s) => s.format === 'json');
+for (const s of schemas) {
+  if (s.format !== 'json') {
+    console.warn(
+      `warn: ${s.title} (schemas/${s.name}/v*.${s.format}) is served but not documented - ` +
+        'src/schema-doc.mjs renders JSON Schema only.',
+    );
+  }
 }
 
 // --- version: release tag from env, else the tool repo's package.json ------
@@ -170,34 +185,51 @@ const marked = new Marked({
   },
 });
 
+// Shared by the markdown docs and the generated schema pages, so both render
+// the same sidebar. `current` is { slug } for a doc page, { schema } for a
+// schema page - a schema page has no slug, so no doc entry matches.
+function navGroups(current) {
+  const groups = [
+    {
+      label: 'Getting started',
+      items: [{ title: 'Usage Guide', href: '/docs/usage/', current: current.slug === 'usage' }],
+    },
+    {
+      label: 'Specification',
+      items: [
+        { title: 'Overview', href: '/docs/', current: current.slug === '' },
+        ...specPages.map((p) => ({
+          title: p.title,
+          href: `/docs/${p.slug}/`,
+          current: p.slug === current.slug,
+        })),
+      ],
+    },
+  ];
+  if (documented.length > 0) {
+    groups.push({
+      label: 'Schemas',
+      items: documented.map((s) => ({
+        title: s.title,
+        href: `/docs/schemas/${s.slug}/`,
+        current: s.slug === current.schema,
+      })),
+    });
+  }
+  return groups;
+}
+
 function renderDoc(page) {
   state.toc = [];
   state.slugCounts = new Map();
   const md = readFileSync(path.join(docsDir, page.file), 'utf8');
   const content = marked.parse(md);
-  const navGroups = [
-    {
-      label: 'Getting started',
-      items: [{ title: 'Usage Guide', href: '/docs/usage/', current: page.slug === 'usage' }],
-    },
-    {
-      label: 'Specification',
-      items: [
-        { title: 'Overview', href: '/docs/', current: page.slug === '' },
-        ...specPages.map((p) => ({
-          title: p.title,
-          href: `/docs/${p.slug}/`,
-          current: p.slug === page.slug,
-        })),
-      ],
-    },
-  ];
   return docShell({
     title: `${page.title} · flashtrace`,
     description: `flashtrace documentation - ${page.title}.`,
     path: page.slug ? `/docs/${page.slug}/` : '/docs/',
     version,
-    navGroups,
+    navGroups: navGroups({ slug: page.slug }),
     toc: state.toc,
     content,
   });
@@ -235,6 +267,20 @@ for (const schema of schemas) {
   writeFileSync(path.join(dir, `latest.${schema.format}`), schema.latest.bytes);
 }
 
+for (const schema of documented) {
+  const dir = path.join(dist, 'docs', 'schemas', schema.slug);
+  mkdirSync(dir, { recursive: true });
+  try {
+    writeFileSync(
+      path.join(dir, 'index.html'),
+      renderSchemaDoc({ schema, version, navGroups: navGroups({ schema: schema.slug }) }),
+    );
+  } catch (err) {
+    console.error(`error: rendering /docs/schemas/${schema.slug}/ failed.\n${err.message}`);
+    process.exit(1);
+  }
+}
+
 // Outside dist/ - a build artifact for CI to read, not something to publish.
 // Written on every build, including a clean one: "no problems" has to be a
 // statement the workflow can act on, or it could never close a stale issue.
@@ -246,6 +292,7 @@ writeFileSync(
 const sitePaths = [
   '/',
   ...pages.map((p) => (p.slug ? `/docs/${p.slug}/` : '/docs/')),
+  ...documented.map((s) => `/docs/schemas/${s.slug}/`),
   '/license/',
   '/impressum/',
 ];
@@ -264,4 +311,6 @@ cpSync(path.join(root, 'public'), dist, { recursive: true });
 cpSync(path.join(root, 'src', 'styles', 'site.css'), path.join(dist, 'site.css'));
 cpSync(path.join(root, 'src', 'scripts', 'site.js'), path.join(dist, 'site.js'));
 
-console.log(`built ${pages.length + 3} pages into dist/ (flashtrace ${version || 'unknown version'})`);
+console.log(
+  `built ${pages.length + documented.length + 3} pages into dist/ (flashtrace ${version || 'unknown version'})`,
+);
