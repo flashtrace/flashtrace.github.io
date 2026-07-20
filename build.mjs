@@ -265,6 +265,11 @@ ${sitePaths.map((p) => `  <url><loc>${SITE_URL}${p}</loc></url>`).join('\n')}
 `,
 );
 
+// Last, and over the top of everything generated above: a file in public/ wins
+// against a generated file at the same path, silently. That is what makes
+// public/ useful as an escape hatch, and also the reason a public/schemas/ or
+// public/docs/ would quietly shadow the real thing - check here first if a
+// generated file is not the one being served.
 cpSync(path.join(root, 'public'), dist, { recursive: true });
 cpSync(path.join(root, 'src', 'styles', 'site.css'), path.join(dist, 'site.css'));
 cpSync(path.join(root, 'src', 'scripts', 'site.js'), path.join(dist, 'site.js'));
