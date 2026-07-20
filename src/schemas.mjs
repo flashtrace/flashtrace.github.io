@@ -7,6 +7,10 @@
 // Discovery reports rather than throws: a file it cannot serve is recorded as
 // a problem and left out of the result, so the caller can decide whether one
 // bad file is worth more than the schemas that are fine.
+//
+// The parsed JSON is deliberately not kept - a consumer that needs the
+// document should parse the bytes it is given, so there is no second
+// representation to fall out of step with what is served.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -122,12 +126,13 @@ function collectSchemaDir(dir, name, schemas, problems) {
       continue;
     }
 
-    // Only the JSON documents are parsed - another format, once allowed, is
-    // served verbatim and this build has no opinion on its contents.
-    let json;
+    // Parsed to find out whether it parses, and for nothing else: the result
+    // is discarded because the site serves bytes, not a re-serialisation.
+    // Only the JSON documents - another format, once allowed, is served
+    // verbatim and this build has no opinion on its contents.
     if (format === 'json') {
       try {
-        json = JSON.parse(bytes.toString('utf8'));
+        JSON.parse(bytes.toString('utf8'));
       } catch (err) {
         problem(`is not valid JSON: ${err.message}`);
         continue;
@@ -135,7 +140,7 @@ function collectSchemaDir(dir, name, schemas, problems) {
     }
 
     if (!byFormat.has(format)) byFormat.set(format, []);
-    byFormat.get(format).push({ version: Number(num), file: entry.name, bytes, json });
+    byFormat.get(format).push({ version: Number(num), file: entry.name, bytes });
   }
 
   for (const [format, versions] of byFormat) {
