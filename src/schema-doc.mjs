@@ -217,12 +217,16 @@ function versionSection(schemaEntry, entry, toc) {
   const conditionals = collectConditionals(schema);
   const canonical = `${SITE_URL}/schemas/${schemaEntry.name}/${file}`;
   const isLatest = entry === schemaEntry.latest;
+  // Every version ships in the page; the picker only chooses which one shows.
+  // The latest is marked current in the markup, so it is what paints first and
+  // what a reader without JS lands on above the older ones.
+  const heading = (id, text, level) => {
+    toc.push({ id, text, level, version: label, current: isLatest });
+    return `<h${level} id="${id}">${text}<a class="heading-anchor" href="#${id}" aria-label="Link to this section">#</a></h${level}>`;
+  };
 
-  toc.push({ id: label, text: `Version ${version}`, level: 2 });
   const parts = [];
-  parts.push(
-    `<h2 id="${label}">Version ${version}<a class="heading-anchor" href="#${label}" aria-label="Link to this section">#</a></h2>`,
-  );
+  parts.push(heading(label, `Version ${version}`, 2));
 
   const urls = [`<li><a href="/schemas/${schemaEntry.name}/${file}"><code>${esc(canonical)}</code></a></li>`];
   if (isLatest) {
@@ -239,19 +243,12 @@ function versionSection(schemaEntry, entry, toc) {
     `<blockquote><p><code>additionalProperties</code> is deliberately left unconstrained. Additive changes do not bump the version, so validating a newer document against this schema must not fail on fields it does not list.</p></blockquote>`,
   );
 
-  toc.push({ id: `${label}-properties`, text: 'Top-level properties', level: 3 });
-  parts.push(
-    `<h3 id="${label}-properties">Top-level properties<a class="heading-anchor" href="#${label}-properties" aria-label="Link to this section">#</a></h3>`,
-  );
+  parts.push(heading(`${label}-properties`, 'Top-level properties', 3));
   parts.push(propertyTable(schema, schema, '#', label, conditionals.get('root')));
 
   for (const [name, def] of Object.entries(schema.$defs ?? {})) {
-    const id = `${label}-${name}`;
     const p = ptr(ptr('#', '$defs'), name);
-    toc.push({ id, text: name, level: 3 });
-    parts.push(
-      `<h3 id="${id}"><code>${esc(name)}</code><a class="heading-anchor" href="#${id}" aria-label="Link to this section">#</a></h3>`,
-    );
+    parts.push(heading(`${label}-${name}`, `<code>${esc(name)}</code>`, 3));
     if (def.description) parts.push(`<p>${esc(def.description)}</p>`);
     const table = propertyTable(schema, def, p, label, conditionals.get(name));
     // Scalar definitions (a constrained string, say) have no properties table;
@@ -259,7 +256,30 @@ function versionSection(schemaEntry, entry, toc) {
     parts.push(table || `<p>Type: ${typeHtml(schema, def, p, label)}</p>`);
   }
 
-  return parts.join('\n');
+  return `<section class="schema-version${isLatest ? ' is-current' : ''}" data-version="${label}" aria-label="Version ${version}">
+${parts.join('\n')}
+</section>`;
+}
+
+// A <select>, not tabs: version counts grow without bound and a picker stays
+// one line at ten versions. Rendered only when there is something to pick.
+function versionPicker(schema) {
+  if (schema.versions.length < 2) return '';
+  const options = [...schema.versions]
+    .reverse()
+    .map((entry) => {
+      const label = `v${entry.version}`;
+      const suffix = entry === schema.latest ? ' (latest)' : '';
+      const selected = entry === schema.latest ? ' selected' : '';
+      return `<option value="${label}"${selected}>Version ${entry.version}${suffix}</option>`;
+    })
+    .join('\n    ');
+  return `<div class="version-picker">
+  <label for="schema-version">Schema version</label>
+  <select id="schema-version" data-version-picker>
+    ${options}
+  </select>
+</div>`;
 }
 
 export function renderSchemaDoc({ schema, version, navGroups }) {
@@ -269,8 +289,9 @@ export function renderSchemaDoc({ schema, version, navGroups }) {
   const content = `<h1>${esc(schema.name)} schema</h1>
 <p>Machine-readable JSON Schema for the flashtrace <code>${esc(schema.name)}</code> document, served from
 <code>${esc(SITE_URL)}/schemas/${esc(schema.name)}/</code>. This page is generated from those files.</p>
-<p>The version below is bumped only by breaking changes - a field removed, renamed, re-typed, or a documented
+<p>The version is bumped only by breaking changes - a field removed, renamed, re-typed, or a documented
 meaning changed. A new optional field does not bump it.</p>
+${versionPicker(schema)}
 ${sections.join('\n')}`;
 
   return docShell({

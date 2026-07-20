@@ -941,6 +941,54 @@ h3:hover .heading-anchor,
   color: var(--muted);
 }
 
+/* schema version picker: a JS-only control, so it does not exist without JS.
+   The .js class lands on <html> before first paint and the latest version is
+   already marked .is-current in the markup, so the page paints on the right
+   version instead of flashing every version and collapsing to one.
+   Scripting off: no picker, every version stacked newest first, all anchors
+   still reachable. */
+.version-picker {
+  display: none;
+}
+
+.js .version-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1.25rem 0 1.75rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-soft);
+}
+
+.version-picker label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.version-picker select {
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--text);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+}
+
+.version-picker select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.js .schema-version:not(.is-current),
+.js .toc li[data-version]:not(.is-current) {
+  display: none;
+}
+
 /* reveal-on-hover only where hover exists; touch devices get a
    permanently visible button, as there is no way to discover it otherwise */
 @media (hover: hover) {
