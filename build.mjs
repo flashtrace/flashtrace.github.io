@@ -46,14 +46,11 @@ const licenseText = readFileSync(licensePath, 'utf8');
 
 // --- schemas: published schemas, sitting next to docs/ in the tool repo ------
 
-// Absent until the release that introduces schemas/, so a missing folder only
-// warns - the rest of the site must keep deploying against older releases.
-//
-// A file the site cannot serve is skipped rather than fatal, and for the same
-// reason: one broken schema must not cost the deploy of every other schema,
-// nor of the docs, which have nothing to do with it. Skipping quietly would be
-// the wrong trade though - the skips are written to schemaProblemsPath below,
-// and CI turns that into a tracking issue.
+// A missing folder only warns, and a file the site cannot serve is skipped
+// rather than fatal, for the same reason: one broken schema - or a release
+// predating schemas/ entirely - must not cost the deploy of the docs, which
+// have nothing to do with it. The skips are written to schemaProblemsPath
+// below so the trade stays visible; CI turns that into a tracking issue.
 const schemasDir = locateSchemas(docsDir);
 let schemas = [];
 let schemaProblems = [];
@@ -225,20 +222,16 @@ for (const page of pages) {
   writeFileSync(path.join(dir, 'index.html'), renderDoc(page));
 }
 
-// Schemas are machine-consumed artifacts, not pages: written byte-for-byte and
-// never through the markdown pipeline, whose link rewriting would corrupt the
-// identifiers ($id, $ref, $schema) inside them. Only the files discovery
-// accepted are published - the site serves the layout it validated, not
-// whatever else the folder happens to contain.
+// Never through the markdown pipeline, whose link rewriting would corrupt the
+// identifiers ($id, $ref, $schema) inside them.
 for (const schema of schemas) {
   const dir = path.join(dist, 'schemas', schema.name);
   mkdirSync(dir, { recursive: true });
   for (const version of schema.versions) writeFileSync(path.join(dir, version.file), version.bytes);
   // A real file, not a redirect - GitHub Pages has no server-side redirects
-  // and a meta-refresh means nothing to a JSON fetch. The bytes are the
-  // highest version's verbatim, $id included: a copy fetched from latest.json
-  // must still say which version it actually is. One alias per format, so a
-  // v1.xml would get latest.xml alongside latest.json.
+  // and a meta-refresh means nothing to a JSON fetch. Copied verbatim, $id
+  // included: a copy fetched from latest.json must still say which version it
+  // actually is.
   writeFileSync(path.join(dir, `latest.${schema.format}`), schema.latest.bytes);
 }
 
@@ -265,11 +258,8 @@ ${sitePaths.map((p) => `  <url><loc>${SITE_URL}${p}</loc></url>`).join('\n')}
 `,
 );
 
-// Last, and over the top of everything generated above: a file in public/ wins
-// against a generated file at the same path, silently. That is what makes
-// public/ useful as an escape hatch, and also the reason a public/schemas/ or
-// public/docs/ would quietly shadow the real thing - check here first if a
-// generated file is not the one being served.
+// Last, so a file in public/ silently wins against a generated file at the
+// same path - check here first if a generated file is not the one being served.
 cpSync(path.join(root, 'public'), dist, { recursive: true });
 cpSync(path.join(root, 'src', 'styles', 'site.css'), path.join(dist, 'site.css'));
 cpSync(path.join(root, 'src', 'scripts', 'site.js'), path.join(dist, 'site.js'));

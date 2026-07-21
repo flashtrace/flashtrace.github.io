@@ -1,22 +1,16 @@
 // Discovery of the machine-readable JSON Schemas the tool repo publishes under
 // schemas/. The files are served verbatim - consumers fetch them by $id, so
-// the bytes on the site must match the release exactly. Nothing here rewrites
-// a schema; the JSON is parsed only to catch a release that ships a broken
-// one, since the URL is a published contract.
+// the bytes on the site must match the release exactly.
 //
 // Discovery reports rather than throws: a file it cannot serve is recorded as
 // a problem and left out of the result, so the caller can decide whether one
 // bad file is worth more than the schemas that are fine.
-//
-// The parsed JSON is deliberately not kept - a consumer that needs the
-// document should parse the bytes it is given, so there is no second
-// representation to fall out of step with what is served.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-// schemas/<name>/v<N>.<format>, exactly one directory deep. The tool repo
-// mirrors the URL layout it is served at, so the on-disk path is also the site
-// path - which stays true only while the site refuses to serve anything else.
+// The tool repo mirrors the URL layout it is served at, so the on-disk path is
+// also the site path - which stays true only while the site refuses to serve
+// anything else.
 const VERSION_FILE = /^v(\d+)\.([A-Za-z0-9]+)$/;
 
 // latest.<format> is ours to generate from the highest version, so an upstream
@@ -47,11 +41,9 @@ export function locateSchemas(docsDir) {
   return existsSync(dir) ? dir : null;
 }
 
-// Returns { schemas, problems }. schemas is one entry per (folder, format)
-// pair, so a folder that ever holds both v1.json and v1.xml keeps two
-// independent version lines - and two latest.* aliases - rather than one
-// muddled one. problems is [{ path, reason }] naming every file that was found
-// and not served.
+// One entry per (folder, format) pair, so a folder that ever holds both
+// v1.json and v1.xml keeps two independent version lines - and two latest.*
+// aliases - rather than one muddled one.
 export function collectSchemas(schemasDir) {
   const schemas = [];
   const problems = [];
@@ -61,8 +53,6 @@ export function collectSchemas(schemasDir) {
       collectSchemaDir(path.join(schemasDir, entry.name), entry.name, schemas, problems);
       continue;
     }
-    // A loose file at the top level is never served: the layout puts every
-    // schema under a folder that names it.
     if (!LOCAL_FILE.test(entry.name) && NEAR_MISS.test(entry.name)) {
       problems.push({
         path: entry.name,
@@ -102,9 +92,9 @@ function collectSchemaDir(dir, name, schemas, problems) {
   }
 }
 
-// What a single entry inside schemas/<name>/ turns out to be. Exactly one of:
-// a { format, version } to serve, a { problem } to report, or null for a file
-// that is plainly the tool repo's own and no business of the site's.
+// Exactly one of: a { format, version } to serve, a { problem } to report, or
+// null for a file that is plainly the tool repo's own and no business of the
+// site's.
 function classifyEntry(dir, entry) {
   const problem = (reason) => ({ problem: reason });
 
@@ -133,8 +123,7 @@ function classifyEntry(dir, entry) {
   }
 
   // An unreadable file is one more thing to skip, not a crash: it reads the
-  // same to a visitor as a broken one, and the report should say which file
-  // rather than leaving a bare EACCES to be traced back by hand.
+  // same to a visitor as a broken one.
   let bytes;
   try {
     bytes = readFileSync(path.join(dir, entry.name));
@@ -142,10 +131,10 @@ function classifyEntry(dir, entry) {
     return problem(`could not be read: ${err.message}`);
   }
 
-  // Parsed to find out whether it parses, and for nothing else: the result is
-  // discarded because the site serves bytes, not a re-serialisation. Only the
-  // JSON documents - another format, once allowed, is served verbatim and this
-  // build has no opinion on its contents.
+  // Parsed to find out whether it parses, and for nothing else: the site
+  // serves bytes, not a re-serialisation, so keeping the document would only
+  // create a second representation to fall out of step. Another format, once
+  // allowed, is served verbatim and this build has no opinion on its contents.
   if (format === 'json') {
     try {
       JSON.parse(bytes.toString('utf8'));

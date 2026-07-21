@@ -13,7 +13,7 @@
 // tell "nothing changed" from "different problems" and diff the two.
 //
 // Node rather than shell: no jq to depend on, and the workflows have already
-// set up Node by the time this runs. gh brings its own JSON handling.
+// set up Node by the time this runs.
 //
 // report() takes its gh as an argument and reaches for nothing global, so it
 // can be driven end to end against a fake. Anything that shells out to the
@@ -29,17 +29,14 @@ const TITLE = 'Schema files under schemas/ are not being served';
 const REPO_URL = 'https://github.com/flashtrace/flashtrace';
 const STATE_OPEN = '<!-- schema-problems-state:';
 
-// Reduces a problem set to what the comparison is actually about: which paths,
-// and why each one. JSON.stringify over the raw array would also fold in array
-// order and key insertion order, so a discovery pass that returned the same
-// problems in a different order - or upstream growing an incidental field like
-// a line number or a timestamp - would read as a changed set and re-comment on
-// every deploy. Discovery does sort by path today, but nothing here enforces
-// that, and this is cheaper than depending on it.
+// Reduces a problem set to what the comparison is about: which paths, and why
+// each one. Stringifying the raw array would fold in array order and key
+// insertion order too, so the same problems arriving in a different order - or
+// upstream growing an incidental field - would read as a changed set and
+// re-comment on every deploy.
 //
-// Sorted by code point rather than localeCompare: two distinct paths must never
-// compare equal, or their relative order would depend on the order they arrived
-// in - reintroducing exactly the instability this exists to remove.
+// Sorted by code point rather than localeCompare, which can call two distinct
+// paths equal and leave their order dependent on the order they arrived in.
 const normalize = (problems) => [...problems]
   .map(({ path, reason }) => [path, reason])
   .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
@@ -105,13 +102,10 @@ const table = (problems) => [
 
 const runNote = (runUrl, verb) => (runUrl ? [`<sub>${verb} by [this run](${runUrl}).</sub>`] : []);
 
-// Two coordinates, because either one alone can lie about the cause. The
-// flashtrace version says which release the docs and schemas came from; the
-// site commit says which build read them. A schema most often comes back
-// because a PR here taught src/schemas.mjs a layout that changed on purpose -
-// that moves the commit and leaves the release untouched, so "resolved at
-// v1.2.3" against an earlier "problems at v1.2.3" would credit a release that
-// never changed and leave nobody able to see why it works now.
+// The version alone can lie about the cause: a schema most often comes back
+// because a PR here taught src/schemas.mjs a layout that changed on purpose,
+// which moves the site commit and leaves the release untouched. Naming both
+// keeps "resolved at v1.2.3" from crediting a release that never changed.
 const siteNote = (siteRef) => {
   if (!siteRef?.sha) return '';
   const short = siteRef.sha.slice(0, 7);
@@ -216,8 +210,6 @@ export function report({ data, gh, log = console.log, reportIssue = false, runUr
   // Annotations cost no permissions and land on the run itself, so they happen
   // whether or not this workflow may touch issues.
   for (const p of problems) {
-    // cell() first so the annotation reads as one line, then the escaping that
-    // makes it a value rather than a command.
     const message = cmdData(cell(`schemas/${p.path} ${p.reason}`));
     log(`::warning title=${cmdProp('Schema not served')}::${message}`);
   }
@@ -229,12 +221,11 @@ export function report({ data, gh, log = console.log, reportIssue = false, runUr
 
   const open = JSON.parse(gh('issue', 'list', '--state', 'open', '--label', LABEL, '--limit', '1', '--json', 'number'));
   const existing = open[0]?.number;
-  // null when there is no issue, or when its body no longer carries a state -
-  // both mean "cannot diff", which is different from "diffed to nothing" and is
-  // kept distinct all the way down: an unreadable body must not produce a
-  // comment announcing every long-standing problem as newly broken.
-  // Kept as written, not just parsed: it is what a failed close has to be
-  // rolled back to.
+  // The body is kept as written, not just parsed: it is what a failed close
+  // has to be rolled back to. previous is null when there is no issue or when
+  // the body carries no state - "cannot diff", kept distinct from "diffed to
+  // nothing" all the way down, so an unreadable body never announces every
+  // long-standing problem as newly broken.
   const existingBody = existing
     ? JSON.parse(gh('issue', 'view', String(existing), '--json', 'body')).body
     : null;
@@ -260,9 +251,8 @@ export function report({ data, gh, log = console.log, reportIssue = false, runUr
         gh('issue', 'edit', String(existing), '--body', existingBody);
         log(`could not close #${existing} - restored its body, so it still reports the last known problems`);
       } catch {
-        // Both calls failing means gh or the API is not usable at all, so
-        // there is nothing left to try from here. Say precisely what state the
-        // issue is in, because it is one nobody would otherwise expect.
+        // Nothing left to try, so say precisely what state the issue is in -
+        // it is one nobody would otherwise expect.
         log(`could not close #${existing}, and could not restore its body: it is open and reads as resolved. The comments hold what was wrong; the next failing build rewrites the body.`);
       }
       throw error;
@@ -329,13 +319,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const sha = GITHUB_SHA || localSha();
   report({
     data: JSON.parse(readFileSync(REPORT, 'utf8')),
-    // Name the repository explicitly rather than letting gh infer it from the
-    // working directory, which matches how the sha is handled and means a run
-    // from outside a checkout - or from one whose origin points elsewhere -
-    // still reports against the repository being deployed. Appended, not
-    // prefixed: the subcommand has to come first, and every flag here carries
-    // its own value, so nothing can swallow it. Local runs without the
-    // variable keep gh's own inference.
+    // Named explicitly rather than inferred from the working directory, so a
+    // run from outside a checkout - or from one whose origin points elsewhere -
+    // still reports against the repository being deployed. Appended, because
+    // the subcommand has to come first. Local runs without the variable keep
+    // gh's own inference.
     gh: (...args) => execFileSync('gh', GITHUB_REPOSITORY ? [...args, '--repo', GITHUB_REPOSITORY] : args,
       { encoding: 'utf8' }).trim(),
     reportIssue: process.env.REPORT_ISSUE === '1',
