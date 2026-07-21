@@ -29,11 +29,25 @@ const TITLE = 'Schema files under schemas/ are not being served';
 const REPO_URL = 'https://github.com/flashtrace/flashtrace';
 const STATE_OPEN = '<!-- schema-problems-state:';
 
+// Reduces a problem set to what the comparison is actually about: which paths,
+// and why each one. JSON.stringify over the raw array would also fold in array
+// order and key insertion order, so a discovery pass that returned the same
+// problems in a different order - or upstream growing an incidental field like
+// a line number or a timestamp - would read as a changed set and re-comment on
+// every deploy. Discovery does sort by path today, but nothing here enforces
+// that, and this is cheaper than depending on it.
+//
+// Sorted by code point rather than localeCompare: two distinct paths must never
+// compare equal, or their relative order would depend on the order they arrived
+// in - reintroducing exactly the instability this exists to remove.
+const normalize = (problems) => [...problems]
+  .map(({ path, reason }) => [path, reason])
+  .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+
 // Identifies the problem set, not the run: the same problems seen by ten
-// consecutive deploys should produce one comment, not ten. Discovery emits
-// problems sorted by path, so the serialisation is stable.
+// consecutive deploys should produce one comment, not ten.
 export function fingerprint(problems) {
-  return createHash('sha256').update(JSON.stringify(problems)).digest('hex').slice(0, 12);
+  return createHash('sha256').update(JSON.stringify(normalize(problems))).digest('hex').slice(0, 12);
 }
 
 // The body doubles as the store: no external state to keep in step with the
