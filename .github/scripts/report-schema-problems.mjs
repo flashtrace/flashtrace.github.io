@@ -219,9 +219,12 @@ export function report({ data, gh, log = console.log, reportIssue = false, runUr
   // both mean "cannot diff", which is different from "diffed to nothing" and is
   // kept distinct all the way down: an unreadable body must not produce a
   // comment announcing every long-standing problem as newly broken.
-  const previous = existing
-    ? readState(JSON.parse(gh('issue', 'view', String(existing), '--json', 'body')).body)?.problems ?? null
+  // Kept as written, not just parsed: it is what a failed close has to be
+  // rolled back to.
+  const existingBody = existing
+    ? JSON.parse(gh('issue', 'view', String(existing), '--json', 'body')).body
     : null;
+  const previous = existing ? readState(existingBody)?.problems ?? null : null;
 
   if (problems.length === 0) {
     if (!existing) {
@@ -229,10 +232,27 @@ export function report({ data, gh, log = console.log, reportIssue = false, runUr
       return 'clean';
     }
     // Body first: a reader arriving from the close notification should not
-    // find a table of problems that no longer exist.
+    // find a table of problems that no longer exist. That ordering leaves a
+    // window, though - if the close fails, an open issue is left claiming to
+    // be resolved, with the table it should still be showing gone. That state
+    // is worse than either call simply not having happened, so put the old
+    // body back and let the next clean build try the whole thing again.
     gh('issue', 'edit', String(existing), '--body', resolvedBody({ ...built, runUrl }));
-    gh('issue', 'close', String(existing), '--comment',
-      closeComment({ ...built, resolved: previous, runUrl }));
+    try {
+      gh('issue', 'close', String(existing), '--comment',
+        closeComment({ ...built, resolved: previous, runUrl }));
+    } catch (error) {
+      try {
+        gh('issue', 'edit', String(existing), '--body', existingBody);
+        log(`could not close #${existing} - restored its body, so it still reports the last known problems`);
+      } catch {
+        // Both calls failing means gh or the API is not usable at all, so
+        // there is nothing left to try from here. Say precisely what state the
+        // issue is in, because it is one nobody would otherwise expect.
+        log(`could not close #${existing}, and could not restore its body: it is open and reads as resolved. The comments hold what was wrong; the next failing build rewrites the body.`);
+      }
+      throw error;
+    }
     log(`clean build - closed #${existing}`);
     return 'closed';
   }
