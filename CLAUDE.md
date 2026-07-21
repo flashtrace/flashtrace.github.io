@@ -13,10 +13,10 @@ Ask refining questions before you start writing.
 | Folder | Purpose |
 |---|---|
 | src/ | Source code, used from 'build.mjs' to create 'dist/' |
-| public/ | Assets that should be included exactly as they are in the final 'dist/' |
+| public/ | Assets that should be included exactly as they are in the final 'dist/'; copied last, so a file here silently overwrites a generated file at the same path |
 | dist/ | Uncommitted, generated build output |
 | flashtrace/ | Uncommitted, gitignored clone of [flashtrace/flashtrace](https://github.com/flashtrace/flashtrace); its 'docs/' are a required build input |
-| .github/ | Continuous integration/deployment workflows |
+| .github/ | Continuous integration/deployment workflows, plus the scripts they run |
 
 'build.mjs' renders the tool repo's 'docs/' into the site, so a build needs access to them.
 It looks for the docs at `$FLASHTRACE_DOCS`, then './flashtrace/docs', then '../flashtrace/docs' - if none exist, clone the tool repo first: `git clone https://github.com/flashtrace/flashtrace`.

@@ -11,9 +11,11 @@ import { docShell, esc, EXT_ATTRS, GITHUB_URL, highlightTokens, SITE_URL } from 
 import { renderLanding } from './src/landing.mjs';
 import { renderImpressum } from './src/impressum.mjs';
 import { renderLicense } from './src/license.mjs';
+import { collectSchemas, locateSchemas } from './src/schemas.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.join(root, 'dist');
+const schemaProblemsPath = path.join(root, 'schema-problems.json');
 
 // --- locate the tool repo's docs (env → CI checkout → local sibling) -------
 
@@ -41,6 +43,33 @@ if (!existsSync(licensePath)) {
   process.exit(1);
 }
 const licenseText = readFileSync(licensePath, 'utf8');
+
+// --- schemas: published schemas, sitting next to docs/ in the tool repo ------
+
+// A missing folder only warns, and a file the site cannot serve is skipped
+// rather than fatal, for the same reason: one broken schema - or a release
+// predating schemas/ entirely - must not cost the deploy of the docs, which
+// have nothing to do with it. The skips are written to schemaProblemsPath
+// below so the trade stays visible; CI turns that into a tracking issue.
+const schemasDir = locateSchemas(docsDir);
+let schemas = [];
+let schemaProblems = [];
+if (schemasDir) {
+  try {
+    ({ schemas, problems: schemaProblems } = collectSchemas(schemasDir));
+  } catch (err) {
+    console.error(`error: could not read ${schemasDir}: ${err.message}`);
+    process.exit(1);
+  }
+  for (const p of schemaProblems) console.warn(`warn: schemas/${p.path} ${p.reason}`);
+  // An empty folder is not a problem: schemas/ can land upstream a release
+  // before the first schema inside it does.
+  if (schemas.length === 0) {
+    console.warn(`warn: ${schemasDir} holds no v<N>.json files - nothing to serve under /schemas/.`);
+  }
+} else {
+  console.warn('warn: no schemas/ in the flashtrace checkout - skipping /schemas/.');
+}
 
 // --- version: release tag from env, else the tool repo's package.json ------
 
@@ -193,6 +222,27 @@ for (const page of pages) {
   writeFileSync(path.join(dir, 'index.html'), renderDoc(page));
 }
 
+// Never through the markdown pipeline, whose link rewriting would corrupt the
+// identifiers ($id, $ref, $schema) inside them.
+for (const schema of schemas) {
+  const dir = path.join(dist, 'schemas', schema.name);
+  mkdirSync(dir, { recursive: true });
+  for (const version of schema.versions) writeFileSync(path.join(dir, version.file), version.bytes);
+  // A real file, not a redirect - GitHub Pages has no server-side redirects
+  // and a meta-refresh means nothing to a JSON fetch. Copied verbatim, $id
+  // included: a copy fetched from latest.json must still say which version it
+  // actually is.
+  writeFileSync(path.join(dir, `latest.${schema.format}`), schema.latest.bytes);
+}
+
+// Outside dist/ - a build artifact for CI to read, not something to publish.
+// Written on every build, including a clean one: "no problems" has to be a
+// statement the workflow can act on, or it could never close a stale issue.
+writeFileSync(
+  schemaProblemsPath,
+  `${JSON.stringify({ version, schemas: schemas.length, problems: schemaProblems }, null, 2)}\n`,
+);
+
 const sitePaths = [
   '/',
   ...pages.map((p) => (p.slug ? `/docs/${p.slug}/` : '/docs/')),
@@ -208,6 +258,8 @@ ${sitePaths.map((p) => `  <url><loc>${SITE_URL}${p}</loc></url>`).join('\n')}
 `,
 );
 
+// Last, so a file in public/ silently wins against a generated file at the
+// same path - check here first if a generated file is not the one being served.
 cpSync(path.join(root, 'public'), dist, { recursive: true });
 cpSync(path.join(root, 'src', 'styles', 'site.css'), path.join(dist, 'site.css'));
 cpSync(path.join(root, 'src', 'scripts', 'site.js'), path.join(dist, 'site.js'));
