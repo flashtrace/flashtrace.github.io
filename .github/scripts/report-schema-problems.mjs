@@ -329,7 +329,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const sha = GITHUB_SHA || localSha();
   report({
     data: JSON.parse(readFileSync(REPORT, 'utf8')),
-    gh: (...args) => execFileSync('gh', args, { encoding: 'utf8' }).trim(),
+    // Name the repository explicitly rather than letting gh infer it from the
+    // working directory, which matches how the sha is handled and means a run
+    // from outside a checkout - or from one whose origin points elsewhere -
+    // still reports against the repository being deployed. Appended, not
+    // prefixed: the subcommand has to come first, and every flag here carries
+    // its own value, so nothing can swallow it. Local runs without the
+    // variable keep gh's own inference.
+    gh: (...args) => execFileSync('gh', GITHUB_REPOSITORY ? [...args, '--repo', GITHUB_REPOSITORY] : args,
+      { encoding: 'utf8' }).trim(),
     reportIssue: process.env.REPORT_ISSUE === '1',
     runUrl: GITHUB_REPOSITORY && GITHUB_RUN_ID
       ? `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`
