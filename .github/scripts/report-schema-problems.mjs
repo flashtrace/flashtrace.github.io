@@ -75,6 +75,14 @@ export function diffProblems(prev, next) {
 // and quietly wreck the row it sits in.
 const cell = (s) => String(s).replace(/\s*[\r\n]+\s*/g, ' ').replace(/\|/g, '\\|');
 
+// Workflow commands are line-oriented and ::-delimited, so the same uncontrolled
+// reason that can wreck a table row can inject commands of its own into the
+// run's command stream - ::error::, ::add-mask::, anything. GitHub's escaping
+// for this is percent-encoding; property values additionally need : and ,,
+// which are what separate the properties from each other and from the message.
+const cmdData = (s) => String(s).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+const cmdProp = (s) => cmdData(s).replace(/:/g, '%3A').replace(/,/g, '%2C');
+
 const table = (problems) => [
   '| File | Why it was skipped |',
   '|---|---|',
@@ -173,7 +181,9 @@ export function report({ data, gh, log = console.log, reportIssue = false, runUr
   // Annotations cost no permissions and land on the run itself, so they happen
   // whether or not this workflow may touch issues.
   for (const p of problems) {
-    log(`::warning title=Schema not served::schemas/${p.path} ${p.reason}`);
+    // cell() first so the annotation reads as one line, then the escaping that
+    // makes it a value rather than a command.
+    log(`::warning title=${cmdProp('Schema not served')}::${cmdData(cell(`schemas/${p.path} ${p.reason}`))}`);
   }
 
   if (!reportIssue) {
