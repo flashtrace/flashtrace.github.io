@@ -135,6 +135,23 @@ export function resolvedBody({ version, siteRef, runUrl }) {
   ].join('\n');
 }
 
+// When the previous set is unreadable there is no diff to state, and stating
+// one anyway would announce every long-standing problem as newly broken. Say
+// what is actually known: the current set, and why it is not a comparison.
+export function unknownPreviousComment({ version, siteRef, problems, runUrl }) {
+  return [
+    `Rebuilt at ${builtAt({ version, siteRef })}.`,
+    '',
+    'The previous state could not be read from this issue\'s body, so what changed since the last build cannot be shown. The full current set is below - some of it may have been here all along.',
+    '',
+    ...table(problems),
+    '',
+    'The issue body above now shows the full current state, and the next build will be able to diff against it again.',
+    '',
+    ...runNote(runUrl, 'Updated'),
+  ].join('\n');
+}
+
 export function changeComment({ version, siteRef, diff, runUrl }) {
   const lines = [`Rebuilt at ${builtAt({ version, siteRef })}, and the problems changed.`, ''];
   if (diff.added.length > 0) {
@@ -155,9 +172,13 @@ export function changeComment({ version, siteRef, diff, runUrl }) {
   return lines.join('\n');
 }
 
+// resolved is null when the previous set was unreadable: say so, rather than
+// closing with a silent gap where the list of what came back should be.
 export function closeComment({ version, siteRef, resolved, runUrl }) {
   const lines = [`Rebuilt at ${builtAt({ version, siteRef })} with nothing skipped - closing.`, ''];
-  if (resolved.length > 0) {
+  if (resolved === null) {
+    lines.push('The previous state could not be read from this issue\'s body, so which files came back cannot be listed. The comments above are the record.', '');
+  } else if (resolved.length > 0) {
     lines.push(
       `**Served again (${resolved.length})**`,
       '',
@@ -183,7 +204,8 @@ export function report({ data, gh, log = console.log, reportIssue = false, runUr
   for (const p of problems) {
     // cell() first so the annotation reads as one line, then the escaping that
     // makes it a value rather than a command.
-    log(`::warning title=${cmdProp('Schema not served')}::${cmdData(cell(`schemas/${p.path} ${p.reason}`))}`);
+    const message = cmdData(cell(`schemas/${p.path} ${p.reason}`));
+    log(`::warning title=${cmdProp('Schema not served')}::${message}`);
   }
 
   if (!reportIssue) {
@@ -194,7 +216,9 @@ export function report({ data, gh, log = console.log, reportIssue = false, runUr
   const open = JSON.parse(gh('issue', 'list', '--state', 'open', '--label', LABEL, '--limit', '1', '--json', 'number'));
   const existing = open[0]?.number;
   // null when there is no issue, or when its body no longer carries a state -
-  // both mean "cannot diff", which is different from "diffed to nothing".
+  // both mean "cannot diff", which is different from "diffed to nothing" and is
+  // kept distinct all the way down: an unreadable body must not produce a
+  // comment announcing every long-standing problem as newly broken.
   const previous = existing
     ? readState(JSON.parse(gh('issue', 'view', String(existing), '--json', 'body')).body)?.problems ?? null
     : null;
@@ -208,7 +232,7 @@ export function report({ data, gh, log = console.log, reportIssue = false, runUr
     // find a table of problems that no longer exist.
     gh('issue', 'edit', String(existing), '--body', resolvedBody({ ...built, runUrl }));
     gh('issue', 'close', String(existing), '--comment',
-      closeComment({ ...built, resolved: previous ?? [], runUrl }));
+      closeComment({ ...built, resolved: previous, runUrl }));
     log(`clean build - closed #${existing}`);
     return 'closed';
   }
@@ -230,8 +254,13 @@ export function report({ data, gh, log = console.log, reportIssue = false, runUr
   }
 
   gh('issue', 'edit', String(existing), '--body', issueBody({ ...built, served, problems, runUrl }));
+  if (previous === null) {
+    gh('issue', 'comment', String(existing), '--body', unknownPreviousComment({ ...built, problems, runUrl }));
+    log(`#${existing} carries no readable state - updated it with the current ${problems.length} problem(s), without a diff`);
+    return 'restated';
+  }
   gh('issue', 'comment', String(existing), '--body',
-    changeComment({ ...built, diff: diffProblems(previous ?? [], problems), runUrl }));
+    changeComment({ ...built, diff: diffProblems(previous, problems), runUrl }));
   log(`problem set changed - updated #${existing}`);
   return 'updated';
 }
