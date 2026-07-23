@@ -83,7 +83,7 @@ export function login(token) {
     snippet: `$ npx flashtrace
 
 Summary
-  items       3  (1 from markdown, 2 from code)
+  items       3  (1 from specs, 2 from code)
   ok          3
   defective   0
 
@@ -124,11 +124,12 @@ const highlightSnippet = (text) => highlightTokens(esc(text));
 const features = [
   ['Zero runtime dependencies', 'One self-contained script. Vendor it or install it - nothing else comes along.', null],
   ['Runs anywhere', 'Everything Node.js ≥ 18 runs on: your laptop, your CI, your air-gapped build box.', null],
-  ['Many languages', 'Tags live in ordinary comments - C-family, Python, Ruby, shell, SQL, Lua, HTML, Vue and more.', '/docs/code-tags/'],
+  ['Many languages (40+)', 'A tag is just a comment, so one syntax spans them all: C-family, hash (Python, shell, ..), SQL, Lua, HTML, ...', '/docs/code-tags/'],
   ['Deep, transitive coverage', 'An item is only deep-covered when its whole tracing chain is. Broken links show up wherever they hide.', '/docs/coverage-rules/'],
-  ['Wildcards &amp; forwarding', 'Accept any 2.x revision, or delegate a requirement’s obligation to another item with a forwarding tag.', '/docs/forwarding/'],
+  ['SemVer revisions &amp; wildcards', 'Revisions match as SemVer versions - 2.4 equals 2.4.0 - and a 2.x wildcard accepts anything within revision 2.', '/docs/revisions/'],
+  ['Forwarding', 'Delegate a requirement’s obligation to another item with a forwarding tag - coverage follows the chain.', '/docs/forwarding/'],
   ['Git-aware scanning', 'Files ignored by git are excluded automatically - no config to keep in sync.', '/docs/usage/'],
-  ['CI-friendly', 'Plain-text report, meaningful exit codes: 0 clean, 1 defects found, 2 usage error.', '/docs/command-line/'],
+  ['Rich, CI-friendly reports', 'A readable text report or deterministic, schema-backed JSON on stdout - and meaningful exit codes: 0 clean, 1 defects found, 2 usage error.', '/docs/json-report/'],
 ];
 
 function featureGrid() {

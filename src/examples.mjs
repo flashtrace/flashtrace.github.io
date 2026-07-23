@@ -1,5 +1,5 @@
 // Curated interactive examples: real inputs and terminal output captured from
-// actual `flashtrace` runs (v0.7.0). No in-browser execution - the CLI needs
+// actual `flashtrace` runs (v0.12.0). No in-browser execution - the CLI needs
 // node:fs and git, so v1 ships pre-computed, trustworthy captures.
 import { esc } from './layout.mjs';
 
@@ -27,9 +27,12 @@ export function colorizeReport(text) {
   s = s.replace(/^(    )(needs|covers|wanted by)( )/gm, '$1<span class="t-dim">$2</span>$3');
   s = s.replace(/^Summary$/m, '<span class="t-bold">Summary</span>');
   s = s.replace(/^(  items +\d+  )(\(.*\))$/m, '$1<span class="t-dim">$2</span>');
-  s = s.replace(/^(  ok +)(\d+)$/m, '$1<span class="t-green">$2</span>');
+  s = s.replace(
+    /^(  ok +)(\d+)(  \(.*\))?$/m,
+    (m, pre, n, breakdown) =>
+      `${pre}<span class="t-green">${n}</span>${breakdown ? `<span class="t-dim">${breakdown}</span>` : ''}`,
+  );
   s = s.replace(/^(  defective +)([1-9]\d*)$/m, '$1<span class="t-red">$2</span>');
-  s = s.replace(/^(  )(of the ok items.*)$/m, '$1<span class="t-dim">$2</span>');
   s = s.replace(/^ok$/m, '<span class="t-green t-bold">ok</span>');
   s = s.replace(/^not ok$/m, '<span class="t-red t-bold">not ok</span>');
   return s;
@@ -38,7 +41,7 @@ export function colorizeReport(text) {
 export const heroTerminal = {
   command: 'npx flashtrace',
   output: `Summary
-  items       2  (1 from markdown, 1 from code)
+  items       2  (1 from specs, 1 from code)
   ok          2
   defective   0
 
@@ -50,7 +53,7 @@ export const examples = [
     id: 'clean',
     title: 'A clean, deep-covered trace',
     blurb:
-      'A requirement needs an implementation at any 2.x revision; the wildcard resolves to impl:login#2.4 and the whole chain is deep-covered.',
+      'A requirement accepts anything within revision 2 - the 2.x wildcard resolves to impl:login#2.4 and the whole chain is deep-covered.',
     command: 'flashtrace -v',
     files: [
       {
@@ -78,7 +81,7 @@ export function login(token: SessionToken) {
     needs impl:login#2.x (→ impl:login#2.4)  ✔ login.ts:1
 
 Summary
-  items       2  (1 from markdown, 1 from code)
+  items       2  (1 from specs, 1 from code)
   ok          2
   defective   0
 
@@ -119,7 +122,7 @@ test('login opens a session', () => { ... });`,
     • uncovered: needs test:auth/login#2, which does not exist (revision mismatch: existing revision(s) of test:auth/login: 1)
 
 Summary
-  items       3  (1 from markdown, 2 from code)
+  items       3  (1 from specs, 2 from code)
   ok          1
   defective   2
 
@@ -165,7 +168,7 @@ export function openSession(token: SessionToken) { ... }`,
     needs impl:auth#1  ✔ auth.ts:1
 
 Summary
-  items       3  (2 from markdown, 1 from code)
+  items       3  (2 from specs, 1 from code)
   ok          3
   defective   0
 
