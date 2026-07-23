@@ -124,7 +124,7 @@ const highlightSnippet = (text) => highlightTokens(esc(text));
 const features = [
   ['Zero runtime dependencies', 'One self-contained script. Vendor it or install it - nothing else comes along.', null],
   ['Runs anywhere', 'Everything Node.js ≥ 18 runs on: your laptop, your CI, your air-gapped build box.', null],
-  ['Many languages', 'A tag is just a comment, so one syntax spans them all: C-style (JS/TS, Java, C#, Go, Rust), hash (Python, Ruby, shell), SQL, Lua, HTML/Vue - and dozens more.', '/docs/code-tags/'],
+  ['Many languages (40+)', 'A tag is just a comment, so one syntax spans them all: C-family, hash (Python, shell, ..), SQL, Lua, HTML, ...', '/docs/code-tags/'],
   ['Deep, transitive coverage', 'An item is only deep-covered when its whole tracing chain is. Broken links show up wherever they hide.', '/docs/coverage-rules/'],
   ['SemVer revisions &amp; wildcards', 'Revisions match as SemVer versions - 2.4 equals 2.4.0 - and a 2.x wildcard accepts anything within revision 2.', '/docs/revisions/'],
   ['Forwarding', 'Delegate a requirement’s obligation to another item with a forwarding tag - coverage follows the chain.', '/docs/forwarding/'],
