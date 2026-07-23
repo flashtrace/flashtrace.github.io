@@ -127,11 +127,9 @@ const features = [
   ['Many languages', 'A tag is just a comment, so one syntax spans them all: C-style (JS/TS, Java, C#, Go, Rust), hash (Python, Ruby, shell), SQL, Lua, HTML/Vue - and dozens more.', '/docs/code-tags/'],
   ['Deep, transitive coverage', 'An item is only deep-covered when its whole tracing chain is. Broken links show up wherever they hide.', '/docs/coverage-rules/'],
   ['SemVer revisions &amp; wildcards', 'Revisions match as SemVer versions - 2.4 equals 2.4.0 - and a 2.x wildcard accepts anything within revision 2.', '/docs/revisions/'],
-  ['Short-form references', 'A reference may drop what its item already fixes: inside req:auth/login#1, Needs: impl reads as impl:auth/login#1.', '/docs/markdown-items/'],
   ['Forwarding', 'Delegate a requirement’s obligation to another item with a forwarding tag - coverage follows the chain.', '/docs/forwarding/'],
-  ['JSON report', 'One --json flag emits the whole run as a deterministic, schema-backed JSON document - ready for jq.', '/docs/json-report/'],
   ['Git-aware scanning', 'Files ignored by git are excluded automatically - no config to keep in sync.', '/docs/usage/'],
-  ['CI-friendly', 'Text or JSON report on stdout, meaningful exit codes: 0 clean, 1 defects found, 2 usage error.', '/docs/command-line/'],
+  ['Rich, CI-friendly reports', 'A readable text report or deterministic, schema-backed JSON on stdout - and meaningful exit codes: 0 clean, 1 defects found, 2 usage error.', '/docs/json-report/'],
 ];
 
 function featureGrid() {
