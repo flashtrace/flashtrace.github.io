@@ -1,6 +1,8 @@
 // Discovery of the machine-readable JSON Schemas the tool repo publishes under
 // schemas/. The files are served verbatim - consumers fetch them by $id, so
-// the bytes on the site must match the release exactly.
+// the bytes on the site must match the release exactly. Nothing here parses
+// for rewriting; the JSON is read only to reject a broken file and to render
+// the docs page from it.
 //
 // Discovery reports rather than throws: a file it cannot serve is recorded as
 // a problem and left out of the result, so the caller can decide whether one
@@ -34,6 +36,17 @@ const LOCAL_FILE = /^(?:\.|LICENSE)|\.md$/i;
 // never meant to be one.
 const NEAR_MISS = /v\d/i;
 
+// "report" + json -> "Report JSON". The folder names the schema, the
+// extension names the format, and the page is titled from both.
+function displayTitle(name, format) {
+  const words = name
+    .split(/[/_-]+/)
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(' ');
+  return `${words} ${format.toUpperCase()}`;
+}
+
 // Sits next to docs/ in the tool repo, like LICENSE does. Absent until the
 // release that introduces it, so the caller decides whether that is fatal.
 export function locateSchemas(docsDir) {
@@ -43,7 +56,9 @@ export function locateSchemas(docsDir) {
 
 // One entry per (folder, format) pair, so a folder that ever holds both
 // v1.json and v1.xml keeps two independent version lines - and two latest.*
-// aliases - rather than one muddled one.
+// aliases - rather than one muddled one, and "Report JSON" and "Report XML"
+// rather than one muddled page. Returns { schemas, problems } with schemas as
+// [{ name, format, slug, title, versions: [{ version, file, bytes, json }], latest }].
 export function collectSchemas(schemasDir) {
   const schemas = [];
   const problems = [];
@@ -88,7 +103,18 @@ function collectSchemaDir(dir, name, schemas, problems) {
     // latest follows the highest version that survived validation, so a broken
     // v1 leaves the alias on v0 rather than on nothing. Serving the last good
     // version is the lesser wrong, and the problem report says why it happened.
-    schemas.push({ name, format, versions, latest: versions.at(-1) });
+    schemas.push({
+      name,
+      format,
+      // Page slug: /docs/schemas/report-json/. Two formats of one schema get
+      // their own page instead of fighting over /docs/schemas/report/. The
+      // pairing is unambiguous because a format is [A-Za-z0-9]+ and so cannot
+      // contain the separating dash.
+      slug: `${name}-${format}`,
+      title: displayTitle(name, format),
+      versions,
+      latest: versions.at(-1),
+    });
   }
 }
 
@@ -131,17 +157,18 @@ function classifyEntry(dir, entry) {
     return problem(`could not be read: ${err.message}`);
   }
 
-  // Parsed to find out whether it parses, and for nothing else: the site
-  // serves bytes, not a re-serialisation, so keeping the document would only
-  // create a second representation to fall out of step. Another format, once
-  // allowed, is served verbatim and this build has no opinion on its contents.
+  // The site serves bytes, never a re-serialisation of the parsed document -
+  // the parse rejects a broken file and feeds the docs renderer, nothing else.
+  // Another format, once allowed, is served verbatim and gets no parse and no
+  // rendered page.
+  let json;
   if (format === 'json') {
     try {
-      JSON.parse(bytes.toString('utf8'));
+      json = JSON.parse(bytes.toString('utf8'));
     } catch (err) {
       return problem(`is not valid JSON: ${err.message}`);
     }
   }
 
-  return { format, version: { version: Number(num), file: entry.name, bytes } };
+  return { format, version: { version: Number(num), file: entry.name, bytes, json } };
 }
