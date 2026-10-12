@@ -122,8 +122,8 @@ const highlightSnippet = (text) => highlightTokens(esc(text));
 // --- features -----------------------------------------------------------------
 
 const features = [
-  ['Zero runtime dependencies', 'One self-contained script. Vendor it or install it - nothing else comes along.', null],
-  ['Runs anywhere', 'Everything Node.js ≥ 18 runs on: your laptop, your CI, your air-gapped build box.', null],
+  ['Zero runtime dependencies', 'One self-contained native binary. Install it or drop it in - nothing else comes along.', null],
+  ['Runs anywhere', 'Windows, Linux and macOS on x64 and ARM64: your laptop, your CI, your air-gapped build box.', null],
   ['Many languages (40+)', 'A tag is just a comment, so one syntax spans them all: C-family, hash (Python, shell, ..), SQL, Lua, HTML, ...', '/docs/code-tags/'],
   ['Deep, transitive coverage', 'An item is only deep-covered when its whole tracing chain is. Broken links show up wherever they hide.', '/docs/coverage-rules/'],
   ['SemVer revisions &amp; wildcards', 'Revisions match as SemVer versions - 2.4 equals 2.4.0 - and a 2.x wildcard accepts anything within revision 2.', '/docs/revisions/'],
@@ -202,11 +202,12 @@ function examplesSection() {
 // --- install -----------------------------------------------------------------
 
 function installSection(version, gitRef) {
-  // raw file at the release ref, so a vendored download matches the docs shown
-  const rawScriptUrl = `${GITHUB_URL}/raw/${esc(gitRef)}/dist/flashtrace.mjs`;
+  // the release matching the docs shown; a dev build has no tag to point at
+  const releaseUrl =
+    gitRef === 'main' ? `${GITHUB_URL}/releases/latest` : `${GITHUB_URL}/releases/tag/${esc(gitRef)}`;
   return `<section class="section" id="install" aria-labelledby="install-title">
   <h2 id="install-title">Install in seconds</h2>
-  <p class="section-sub">Two ways in, both ending at the same single file. Current release: <strong>${esc(version)}</strong>.</p>
+  <p class="section-sub">Three ways in, all ending at the same native binary. Current release: <strong>${esc(version)}</strong>.</p>
   <div class="install-grid">
     <div class="install-card">
       <h3>As a dev dependency</h3>
@@ -215,12 +216,18 @@ npx flashtrace</code></pre><button class="copy-btn" data-copy="npm install flash
 npx flashtrace" aria-label="Copy install commands">Copy</button></div>
     </div>
     <div class="install-card">
-      <h3>Vendored, zero install</h3>
-      <p class="install-note">Download <a href="${rawScriptUrl}"${EXT_ATTRS} class="ext-mark">dist/flashtrace.mjs</a> into your repository and run it directly.</p>
-      <div class="cmd-block"><pre><code>node flashtrace.mjs</code></pre><button class="copy-btn" data-copy="node flashtrace.mjs" aria-label="Copy run command">Copy</button></div>
+      <h3>With Cargo</h3>
+      <div class="cmd-block"><pre><code>cargo install flashtrace
+flashtrace</code></pre><button class="copy-btn" data-copy="cargo install flashtrace
+flashtrace" aria-label="Copy Cargo install commands">Copy</button></div>
+    </div>
+    <div class="install-card">
+      <h3>Standalone binary</h3>
+      <p class="install-note">Download the binary for your platform from the <a href="${releaseUrl}"${EXT_ATTRS} class="ext-mark">release</a> and run it directly.</p>
+      <div class="cmd-block"><pre><code>flashtrace</code></pre><button class="copy-btn" data-copy="flashtrace" aria-label="Copy run command">Copy</button></div>
     </div>
   </div>
-  <p class="install-note">Node.js ≥ 18 required. Read the <a href="/docs/usage/">Usage Guide</a> for options and details.</p>
+  <p class="install-note">The npm package needs Node.js ≥ 18; the binary itself needs nothing. Read the <a href="/docs/usage/">Usage Guide</a> for options and details.</p>
 </section>`;
 }
 
@@ -231,7 +238,7 @@ export function renderLanding({ version, gitRef }) {
 <section class="hero">
   <div class="hero-copy">
     <h1>Lightning-fast, reference-based requirement tracing</h1>
-    <p class="hero-sub">flashtrace verifies that every requirement in your Markdown specs is covered by the code and tests it demands - with zero runtime dependencies, anywhere Node.js runs.</p>
+    <p class="hero-sub">flashtrace verifies that every requirement in your Markdown specs is covered by the code and tests it demands - one native binary with zero runtime dependencies, on Windows, Linux and macOS.</p>
     <div class="hero-ctas">
       <a class="btn btn-primary" href="/docs/">Get started</a>
       <a class="btn btn-secondary" href="${GITHUB_URL}"${EXT_ATTRS}>View on GitHub</a>
@@ -247,7 +254,7 @@ ${installSection(version, gitRef)}
   return pageShell({
     title: 'flashtrace - lightning-fast, reference-based requirement tracing',
     description:
-      'flashtrace traces requirement coverage between Markdown specs and code comments. Zero runtime dependencies, runs anywhere Node.js ≥ 18 does.',
+      'flashtrace traces requirement coverage between Markdown specs and code comments. One native binary with zero runtime dependencies for Windows, Linux and macOS.',
     path: '/',
     version,
     active: 'home',
