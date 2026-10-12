@@ -122,8 +122,7 @@ const highlightSnippet = (text) => highlightTokens(esc(text));
 // --- features -----------------------------------------------------------------
 
 const features = [
-  ['Zero runtime dependencies', 'One self-contained native binary. Install it or drop it in - nothing else comes along.', null],
-  ['Runs anywhere', 'Windows, Linux and macOS on x64 and ARM64: your laptop, your CI, your air-gapped build box.', null],
+  ['Runs anywhere', 'One self-contained native binary. Available for Windows, Linux and macOS on x64 and ARM64 each.', null],
   ['Many languages (40+)', 'A tag is just a comment, so one syntax spans them all: C-family, hash (Python, shell, ..), SQL, Lua, HTML, ...', '/docs/code-tags/'],
   ['Deep, transitive coverage', 'An item is only deep-covered when its whole tracing chain is. Broken links show up wherever they hide.', '/docs/coverage-rules/'],
   ['SemVer revisions &amp; wildcards', 'Revisions match as SemVer versions - 2.4 equals 2.4.0 - and a 2.x wildcard accepts anything within revision 2.', '/docs/revisions/'],
