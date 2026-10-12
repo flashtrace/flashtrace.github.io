@@ -210,13 +210,14 @@ function installSection(version, gitRef) {
   <p class="section-sub">Three ways in, all ending at the same native binary. Current release: <strong>${esc(version)}</strong>.</p>
   <div class="install-grid">
     <div class="install-card">
-      <h3>As a dev dependency</h3>
+      <h3>With Node (JS/TS)</h3>
+      <p class="install-note">As a dev dependency. Requires Node ≥ 18.</p>
       <div class="cmd-block"><pre><code>npm install flashtrace -D
 npx flashtrace</code></pre><button class="copy-btn" data-copy="npm install flashtrace -D
 npx flashtrace" aria-label="Copy install commands">Copy</button></div>
     </div>
     <div class="install-card">
-      <h3>With Cargo</h3>
+      <h3>With Cargo (Rust)</h3>
       <div class="cmd-block"><pre><code>cargo install flashtrace
 flashtrace</code></pre><button class="copy-btn" data-copy="cargo install flashtrace
 flashtrace" aria-label="Copy Cargo install commands">Copy</button></div>
@@ -227,7 +228,7 @@ flashtrace" aria-label="Copy Cargo install commands">Copy</button></div>
       <div class="cmd-block"><pre><code>flashtrace</code></pre><button class="copy-btn" data-copy="flashtrace" aria-label="Copy run command">Copy</button></div>
     </div>
   </div>
-  <p class="install-note">The npm package needs Node.js ≥ 18; the binary itself needs nothing. Read the <a href="/docs/usage/">Usage Guide</a> for options and details.</p>
+  <p class="install-note">Read the <a href="/docs/usage/">Usage Guide</a> for options and details.</p>
 </section>`;
 }
 
